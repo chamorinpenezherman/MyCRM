@@ -543,7 +543,25 @@
         <option>Visite Prospect</option><option>Visite Rapide</option>
       </select>
     </div>
-    <div class="form-group"><label>Client / Lieu</label><input type="text" id="ev-client" placeholder="Client ou lieu…"></div>
+    <div class="form-group"><label>Client / Lieu</label><input type="text" id="ev-client" placeholder="Client ou lieu…" oninput="updateEvInterlocSelect()" onchange="updateEvInterlocSelect()"></div>
+    <div class="form-group">
+      <label>Interlocuteur</label>
+      <div style="display:flex;gap:8px">
+        <select id="ev-interlocuteur" style="flex:1" onchange="onEvInterlocChange()">
+          <option value="">— Optionnel —</option>
+        </select>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="openEvQuickContact()" title="Nouveau contact" style="flex-shrink:0;padding:0 12px">+</button>
+      </div>
+      <div id="ev-interloc-new" style="display:none;margin-top:8px;background:var(--gray-bg);border-radius:var(--radius-sm);padding:10px;border:1px solid var(--gray-border)">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">Nouveau contact rapide</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input type="text" id="ev-cnt-prenom" placeholder="Prénom…" style="font-size:13px;padding:8px 10px">
+          <input type="text" id="ev-cnt-nom" placeholder="Nom…" style="font-size:13px;padding:8px 10px">
+        </div>
+        <input type="text" id="ev-cnt-fonction" placeholder="Fonction…" style="font-size:13px;padding:8px 10px;margin-bottom:8px">
+        <input type="email" id="ev-cnt-email" placeholder="E-mail…" style="font-size:13px;padding:8px 10px">
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="form-group"><label>Date</label><input type="date" id="ev-date"></div>
       <div class="form-group"><label>Heure</label><input type="time" id="ev-time"></div>
@@ -697,12 +715,16 @@ function renderEventList() {
       html += `<div style="font-size:12px;font-weight:600;color:var(--gray-text);text-transform:uppercase;letter-spacing:0.8px;margin:14px 0 8px;">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>`;
     }
     const color = TYPE_COLORS[ev.type] || '#E8650A';
+    const contacts = loadData('crm_contacts');
+    const interlocuteur = ev.interlocuteurId ? contacts.find(c=>c.id===ev.interlocuteurId) : null;
+    const interlocLabel = interlocuteur ? `${interlocuteur.prenom||''} ${interlocuteur.nom||''}${interlocuteur.fonction?' · '+interlocuteur.fonction:''}`.trim() : '';
     html += `<div class="event-card" onclick="openEditEvent('${ev.id}')">
       <div class="event-color" style="background:${color}"></div>
       <div style="flex:1">
         <div class="event-time">${ev.time} · ${ev.duration<60?ev.duration+'min':(ev.duration/60)+'h'}</div>
         <div class="event-title">${ev.client||ev.type}</div>
         <div class="event-sub">${ev.type}${ev.notes?' · '+ev.notes.slice(0,40):''}</div>
+        ${interlocLabel?`<div style="font-size:11px;color:#6366F1;font-weight:600;margin-top:3px">👤 ${interlocLabel}</div>`:''}
         <span class="event-type-badge" style="background:${color}18;color:${color}">${ev.type}</span>
       </div>
     </div>`;
@@ -720,6 +742,8 @@ function openAddEvent() {
   document.getElementById('ev-duration').value = '60';
   document.getElementById('ev-notes').value = '';
   document.getElementById('btnDeleteEvent').style.display = 'none';
+  document.getElementById('ev-interlocuteur').innerHTML = '<option value="">— Optionnel —</option>';
+  document.getElementById('ev-interloc-new').style.display = 'none';
   document.getElementById('modal-event').style.display = 'flex';
 }
 
@@ -736,10 +760,28 @@ function openEditEvent(id) {
   document.getElementById('ev-duration').value = ev.duration;
   document.getElementById('ev-notes').value = ev.notes||'';
   document.getElementById('btnDeleteEvent').style.display = 'flex';
+  updateEvInterlocSelect(ev.interlocuteurId||'');
+  document.getElementById('ev-interloc-new').style.display = 'none';
   document.getElementById('modal-event').style.display = 'flex';
 }
 
 function saveEvent() {
+  // Gérer contact rapide agenda si besoin
+  let interlocuteurId = document.getElementById('ev-interlocuteur').value;
+  if(interlocuteurId === '__new__') {
+    const prenom  = document.getElementById('ev-cnt-prenom').value.trim();
+    const nom     = document.getElementById('ev-cnt-nom').value.trim();
+    const fonct   = document.getElementById('ev-cnt-fonction').value.trim();
+    const email   = document.getElementById('ev-cnt-email').value.trim();
+    const client  = document.getElementById('ev-client').value.trim();
+    if(prenom || nom) {
+      const newCnt = { id: Date.now().toString(), client, prenom, nom, fonction: fonct, email, tel: '', createdAt: new Date().toISOString() };
+      let contacts = loadData('crm_contacts');
+      contacts.push(newCnt);
+      saveData('crm_contacts', contacts);
+      interlocuteurId = newCnt.id;
+    } else { interlocuteurId = ''; }
+  }
   const ev = {
     id: editingEventId || Date.now().toString(),
     user: currentUser, company: currentCompany,
@@ -748,7 +790,8 @@ function saveEvent() {
     date: document.getElementById('ev-date').value,
     time: document.getElementById('ev-time').value,
     duration: parseInt(document.getElementById('ev-duration').value),
-    notes: document.getElementById('ev-notes').value
+    notes: document.getElementById('ev-notes').value,
+    interlocuteurId
   };
   let events = loadData('crm_events');
   if(editingEventId) { events = events.map(e => e.id===editingEventId ? ev : e); }
@@ -1046,6 +1089,45 @@ function saveCR() {
   crToggles = { cmd:null, expo:null, mep:null };
   document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
   alert('✓ Compte rendu enregistré !');
+}
+
+function updateEvInterlocSelect(selectedId='') {
+  const client = document.getElementById('ev-client').value.trim();
+  const contacts = loadData('crm_contacts').filter(c => c.client.toLowerCase()===client.toLowerCase());
+  const sel = document.getElementById('ev-interlocuteur');
+  sel.innerHTML = '<option value="">— Optionnel —</option>';
+  contacts.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.prenom||''} ${c.nom||''}${c.fonction?' · '+c.fonction:''}`.trim();
+    if(c.id === selectedId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__';
+  newOpt.textContent = '+ Nouveau contact…';
+  sel.appendChild(newOpt);
+  document.getElementById('ev-interloc-new').style.display = 'none';
+}
+
+function onEvInterlocChange() {
+  const val = document.getElementById('ev-interlocuteur').value;
+  document.getElementById('ev-interloc-new').style.display = (val==='__new__') ? 'block' : 'none';
+}
+
+function openEvQuickContact() {
+  const client = document.getElementById('ev-client').value.trim();
+  document.getElementById('cnt-client').value = client;
+  editingContactId = null;
+  document.getElementById('contactModalTitle').textContent = 'Nouveau contact';
+  document.getElementById('cnt-prenom').value = '';
+  document.getElementById('cnt-nom').value = '';
+  document.getElementById('cnt-fonction').value = '';
+  document.getElementById('cnt-email').value = '';
+  document.getElementById('cnt-tel').value = '';
+  document.getElementById('btnDeleteContact').style.display = 'none';
+  updateCntClientSuggestions();
+  document.getElementById('modal-contact').style.display = 'flex';
 }
 
 // ============ CONTACTS ============
@@ -1485,7 +1567,14 @@ function closeModalEvent(e) {
 
 // ============ DEMO DATA ============
 function seedDemoData() {
-  if(localStorage.getItem('crm_demo_seeded')) return;
+  if(localStorage.getItem('crm_demo_seeded')) {
+    // Re-seed contacts si pas encore fait séparément
+    if(!localStorage.getItem('crm_contacts_seeded')) {
+      seedContacts();
+      localStorage.setItem('crm_contacts_seeded','1');
+    }
+    return;
+  }
 
   const CLIENTS = [
     { name:'Leroy Merlin Pau',        enseigne:'Leroy Merlin'  },
@@ -1635,9 +1724,79 @@ function seedDemoData() {
     });
   });
 
+  // ---- Contacts demo ----
+  const CONTACTS_DEMO = [
+    // Leroy Merlin Pau
+    { client:'Leroy Merlin Pau',        prenom:'Sébastien', nom:'MARIN',     fonction:'Responsable Rayon Jardin',       email:'s.marin@leroymerlin.fr',       tel:'06 12 34 56 78' },
+    { client:'Leroy Merlin Pau',        prenom:'Nathalie',  nom:'BOYER',     fonction:'Directrice Magasin',             email:'n.boyer@leroymerlin.fr',        tel:'06 87 65 43 21' },
+    // Leroy Merlin Bayonne
+    { client:'Leroy Merlin Bayonne',    prenom:'Thomas',    nom:'DUPUIS',    fonction:'Chef de Secteur Extérieur',      email:'t.dupuis@leroymerlin.fr',       tel:'06 23 45 67 89' },
+    { client:'Leroy Merlin Bayonne',    prenom:'Isabelle',  nom:'LACOMBE',   fonction:'Responsable Achats',             email:'i.lacombe@leroymerlin.fr',      tel:'06 34 56 78 90' },
+    // Leroy Merlin Bordeaux
+    { client:'Leroy Merlin Bordeaux',   prenom:'Frédéric',  nom:'BERNARD',   fonction:'Responsable Rayon Jardinage',    email:'f.bernard@leroymerlin.fr',      tel:'06 45 67 89 01' },
+    // Castorama Pau
+    { client:'Castorama Pau',           prenom:'Laurent',   nom:'PELLETIER', fonction:'Chef de Rayon Aménagement Ext.', email:'l.pelletier@castorama.fr',      tel:'06 56 78 90 12' },
+    { client:'Castorama Pau',           prenom:'Sophie',    nom:'RENAUD',    fonction:'Directrice Adjointe',            email:'s.renaud@castorama.fr',         tel:'06 67 89 01 23' },
+    // Castorama Tarbes
+    { client:'Castorama Tarbes',        prenom:'Bruno',     nom:'GARCIA',    fonction:'Responsable Rayon Jardin',       email:'b.garcia@castorama.fr',         tel:'06 78 90 12 34' },
+    // Castorama Agen
+    { client:'Castorama Agen',          prenom:'Élodie',    nom:'MOREL',     fonction:'Chef de Secteur',                email:'e.morel@castorama.fr',          tel:'06 89 01 23 45' },
+    { client:'Castorama Agen',          prenom:'Marc',      nom:'GUILLOT',   fonction:'Directeur Magasin',              email:'m.guillot@castorama.fr',        tel:'06 90 12 34 56' },
+    // Jardiland Pau
+    { client:'Jardiland Pau',           prenom:'Caroline',  nom:'SIMON',     fonction:'Responsable Végétaux',           email:'c.simon@jardiland.fr',          tel:'06 11 22 33 44' },
+    { client:'Jardiland Pau',           prenom:'Arnaud',    nom:'FAURE',     fonction:'Directeur Magasin',              email:'a.faure@jardiland.fr',          tel:'06 22 33 44 55' },
+    // Jardiland Bayonne
+    { client:'Jardiland Bayonne',       prenom:'Céline',    nom:'LEPAGE',    fonction:'Chef Rayon Horticulture',        email:'c.lepage@jardiland.fr',         tel:'06 33 44 55 66' },
+    // Jardiland Mont-de-Marsan
+    { client:'Jardiland Mont-de-Marsan',prenom:'David',     nom:'CHEVALIER', fonction:'Responsable Rayon',              email:'d.chevalier@jardiland.fr',      tel:'06 44 55 66 77' },
+    { client:'Jardiland Mont-de-Marsan',prenom:'Aurélie',   nom:'PETIT',     fonction:'Directrice',                     email:'a.petit@jardiland.fr',          tel:'06 55 66 77 88' },
+    // Truffaut Bordeaux
+    { client:'Truffaut Bordeaux',       prenom:'Nicolas',   nom:'LAMBERT',   fonction:'Responsable Végétaux & Terreau', email:'n.lambert@truffaut.com',        tel:'06 66 77 88 99' },
+    { client:'Truffaut Bordeaux',       prenom:'Marie-Laure',nom:'BLANC',    fonction:'Directrice Magasin',             email:'ml.blanc@truffaut.com',         tel:'06 77 88 99 00' },
+    // Truffaut Biarritz
+    { client:'Truffaut Biarritz',       prenom:'Julien',    nom:'MOULIN',    fonction:'Chef de Rayon Jardin',           email:'j.moulin@truffaut.com',         tel:'06 88 99 00 11' },
+    // Truffaut Dax
+    { client:'Truffaut Dax',            prenom:'Sandrine',  nom:'LEROY',     fonction:'Responsable Achats Région',      email:'s.leroy@truffaut.com',          tel:'06 99 00 11 22' },
+    { client:'Truffaut Dax',            prenom:'Pierre',    nom:'FONTAINE',  fonction:'Directeur Magasin',              email:'p.fontaine@truffaut.com',        tel:'06 10 11 22 33' },
+  ];
+
+  const contacts = CONTACTS_DEMO.map((c,i) => ({ ...c, id: String(20000+i), createdAt: new Date().toISOString() }));
+  saveData('crm_contacts', contacts);
+
   saveData('crm_crs', crs);
   saveData('crm_events', events);
   localStorage.setItem('crm_demo_seeded', '1');
+  localStorage.setItem('crm_contacts_seeded', '1');
+}
+
+function seedContacts() {
+  const CONTACTS_DEMO = [
+    { client:'Leroy Merlin Pau',        prenom:'Sébastien', nom:'MARIN',     fonction:'Responsable Rayon Jardin',       email:'s.marin@leroymerlin.fr',       tel:'06 12 34 56 78' },
+    { client:'Leroy Merlin Pau',        prenom:'Nathalie',  nom:'BOYER',     fonction:'Directrice Magasin',             email:'n.boyer@leroymerlin.fr',        tel:'06 87 65 43 21' },
+    { client:'Leroy Merlin Bayonne',    prenom:'Thomas',    nom:'DUPUIS',    fonction:'Chef de Secteur Extérieur',      email:'t.dupuis@leroymerlin.fr',       tel:'06 23 45 67 89' },
+    { client:'Leroy Merlin Bayonne',    prenom:'Isabelle',  nom:'LACOMBE',   fonction:'Responsable Achats',             email:'i.lacombe@leroymerlin.fr',      tel:'06 34 56 78 90' },
+    { client:'Leroy Merlin Bordeaux',   prenom:'Frédéric',  nom:'BERNARD',   fonction:'Responsable Rayon Jardinage',    email:'f.bernard@leroymerlin.fr',      tel:'06 45 67 89 01' },
+    { client:'Castorama Pau',           prenom:'Laurent',   nom:'PELLETIER', fonction:'Chef de Rayon Aménagement Ext.', email:'l.pelletier@castorama.fr',      tel:'06 56 78 90 12' },
+    { client:'Castorama Pau',           prenom:'Sophie',    nom:'RENAUD',    fonction:'Directrice Adjointe',            email:'s.renaud@castorama.fr',         tel:'06 67 89 01 23' },
+    { client:'Castorama Tarbes',        prenom:'Bruno',     nom:'GARCIA',    fonction:'Responsable Rayon Jardin',       email:'b.garcia@castorama.fr',         tel:'06 78 90 12 34' },
+    { client:'Castorama Agen',          prenom:'Élodie',    nom:'MOREL',     fonction:'Chef de Secteur',                email:'e.morel@castorama.fr',          tel:'06 89 01 23 45' },
+    { client:'Castorama Agen',          prenom:'Marc',      nom:'GUILLOT',   fonction:'Directeur Magasin',              email:'m.guillot@castorama.fr',        tel:'06 90 12 34 56' },
+    { client:'Jardiland Pau',           prenom:'Caroline',  nom:'SIMON',     fonction:'Responsable Végétaux',           email:'c.simon@jardiland.fr',          tel:'06 11 22 33 44' },
+    { client:'Jardiland Pau',           prenom:'Arnaud',    nom:'FAURE',     fonction:'Directeur Magasin',              email:'a.faure@jardiland.fr',          tel:'06 22 33 44 55' },
+    { client:'Jardiland Bayonne',       prenom:'Céline',    nom:'LEPAGE',    fonction:'Chef Rayon Horticulture',        email:'c.lepage@jardiland.fr',         tel:'06 33 44 55 66' },
+    { client:'Jardiland Mont-de-Marsan',prenom:'David',     nom:'CHEVALIER', fonction:'Responsable Rayon',              email:'d.chevalier@jardiland.fr',      tel:'06 44 55 66 77' },
+    { client:'Jardiland Mont-de-Marsan',prenom:'Aurélie',   nom:'PETIT',     fonction:'Directrice',                     email:'a.petit@jardiland.fr',          tel:'06 55 66 77 88' },
+    { client:'Truffaut Bordeaux',       prenom:'Nicolas',   nom:'LAMBERT',   fonction:'Responsable Végétaux & Terreau', email:'n.lambert@truffaut.com',        tel:'06 66 77 88 99' },
+    { client:'Truffaut Bordeaux',       prenom:'Marie-Laure',nom:'BLANC',    fonction:'Directrice Magasin',             email:'ml.blanc@truffaut.com',         tel:'06 77 88 99 00' },
+    { client:'Truffaut Biarritz',       prenom:'Julien',    nom:'MOULIN',    fonction:'Chef de Rayon Jardin',           email:'j.moulin@truffaut.com',         tel:'06 88 99 00 11' },
+    { client:'Truffaut Dax',            prenom:'Sandrine',  nom:'LEROY',     fonction:'Responsable Achats Région',      email:'s.leroy@truffaut.com',          tel:'06 99 00 11 22' },
+    { client:'Truffaut Dax',            prenom:'Pierre',    nom:'FONTAINE',  fonction:'Directeur Magasin',              email:'p.fontaine@truffaut.com',       tel:'06 10 11 22 33' },
+  ];
+  const existing = loadData('crm_contacts');
+  if(!existing.length) {
+    const contacts = CONTACTS_DEMO.map((c,i) => ({ ...c, id: String(20000+i), createdAt: new Date().toISOString() }));
+    saveData('crm_contacts', contacts);
+  }
 }
 
 // ============ START ============
