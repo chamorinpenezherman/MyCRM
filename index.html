@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CRM Chamorin & Penez Herman</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #E8650A;
+    --orange-light: #FDF0E8;
+    --orange-mid: #F4A460;
+    --navy: #1A2540;
+    --navy-mid: #2E3D5C;
+    --gray-bg: #F6F7F9;
+    --gray-border: #E2E6EE;
+    --gray-text: #6B7A99;
+    --white: #FFFFFF;
+    --success: #2D9E6B;
+    --success-bg: #EAF7F1;
+    --danger: #D94040;
+    --danger-bg: #FDF0F0;
+    --warning: #E8A20A;
+    --warning-bg: #FEF8EC;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(26,37,64,0.08);
+    --shadow-md: 0 4px 20px rgba(26,37,64,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--gray-bg); color: var(--navy); min-height: 100vh; max-width: 480px; margin: 0 auto; position: relative; }
+  
+  /* HEADER */
+  .app-header { background: var(--navy); color: white; padding: 14px 20px 10px; position: sticky; top: 0; z-index: 100; }
+  .app-header h1 { font-family: 'DM Serif Display', serif; font-size: 17px; letter-spacing: 0.3px; color: white; }
+  .app-header span { font-size: 11px; color: var(--orange-mid); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; display: block; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; }
+  .user-badge { background: var(--orange); color: white; border-radius: 50px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  /* NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--white); border-top: 1px solid var(--gray-border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 2px 8px; cursor: pointer; border: none; background: none; color: var(--gray-text); font-size: 9px; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: color 0.2s; gap: 3px; }
+  /* Planning grid */
+  .plan-grid { display: grid; grid-template-columns: 44px repeat(7,1fr); border: 1px solid var(--gray-border); border-radius: var(--radius); overflow: hidden; background: var(--white); margin-bottom: 12px; }
+  .plan-head { background: var(--navy); color: white; font-size: 10px; font-weight: 700; text-align: center; padding: 7px 2px; }
+  .plan-head.time-col { background: var(--navy-mid); }
+  .plan-day-label { font-size: 9px; color: var(--gray-text); font-weight: 600; text-align: center; padding: 6px 2px; border-bottom: 1px solid var(--gray-border); background: var(--white); }
+  .plan-cell { border-left: 1px solid var(--gray-border); border-bottom: 1px solid var(--gray-border); min-height: 36px; position: relative; }
+  .plan-time-cell { font-size: 9px; color: var(--gray-text); text-align: right; padding: 4px 4px 0 2px; border-bottom: 1px solid var(--gray-border); background: var(--gray-bg); }
+  .plan-event-chip { border-radius: 4px; font-size: 9px; font-weight: 700; padding: 2px 3px; margin: 1px; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+  /* Month calendar */
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); border: 1px solid var(--gray-border); border-radius: var(--radius); overflow: hidden; background: var(--white); margin-bottom: 12px; }
+  .cal-head { background: var(--navy); color: white; font-size: 10px; font-weight: 700; text-align: center; padding: 7px 2px; }
+  .cal-cell { border-right: 1px solid var(--gray-border); border-bottom: 1px solid var(--gray-border); min-height: 52px; padding: 3px; position: relative; }
+  .cal-cell:nth-child(7n) { border-right: none; }
+  .cal-day-num { font-size: 11px; font-weight: 600; color: var(--navy); margin-bottom: 2px; }
+  .cal-day-num.other-month { color: var(--gray-border); }
+  .cal-day-num.today { background: var(--orange); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .cal-chip { border-radius: 3px; font-size: 8px; font-weight: 700; padding: 1px 3px; margin-bottom: 1px; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .nav-item.active { color: var(--orange); }
+  .nav-item svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); display: none; }
+  .nav-item.active .nav-dot { display: block; }
+
+  /* SCREENS */
+  .screen { display: none; padding: 16px 16px 90px; animation: fadeIn 0.2s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* CARDS */
+  .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-border); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--gray-text); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+  
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--orange); color: white; width: 100%; justify-content: center; padding: 13px; font-size: 15px; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-ghost { background: transparent; border: 1px solid var(--gray-border); color: var(--navy); }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #fca5a5; }
+  .btn-sm { padding: 7px 12px; font-size: 12px; }
+  
+  /* FORM ELEMENTS */
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+  input, select, textarea { width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--navy); background: var(--white); outline: none; transition: border 0.2s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--orange); }
+  textarea { resize: vertical; min-height: 90px; }
+  .form-group { margin-bottom: 14px; }
+  
+  /* TOGGLE */
+  .toggle-group { display: flex; gap: 8px; }
+  .toggle-btn { flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 1.5px solid var(--gray-border); background: var(--white); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; color: var(--gray-text); }
+  .toggle-btn.yes.active { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+  .toggle-btn.no.active { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+
+  /* AGENDA EVENTS */
+  .event-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-border); padding: 14px 16px; margin-bottom: 10px; display: flex; gap: 14px; align-items: flex-start; cursor: pointer; box-shadow: var(--shadow); }
+  .event-color { width: 4px; border-radius: 4px; align-self: stretch; min-height: 40px; flex-shrink: 0; }
+  .event-time { font-size: 12px; color: var(--gray-text); font-weight: 500; }
+  .event-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+  .event-sub { font-size: 12px; color: var(--gray-text); margin-top: 2px; }
+  .event-type-badge { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 600; margin-top: 5px; }
+
+  /* DATE NAV */
+  .date-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; background: var(--white); border-radius: var(--radius); padding: 12px 16px; border: 1px solid var(--gray-border); }
+  .date-nav button { background: none; border: none; cursor: pointer; padding: 4px 10px; font-size: 18px; color: var(--navy); border-radius: 6px; }
+  .date-nav button:active { background: var(--gray-bg); }
+  .date-display { font-size: 15px; font-weight: 700; color: var(--navy); }
+  
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(26,37,64,0.5); z-index: 200; display: flex; align-items: flex-end; }
+  .modal { background: var(--white); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; margin: 0 auto; padding: 24px 20px 32px; max-height: 92vh; overflow-y: auto; }
+  .modal-handle { width: 40px; height: 4px; background: var(--gray-border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 20px; }
+  .modal-close { float: right; background: var(--gray-bg); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 18px; color: var(--gray-text); display: flex; align-items: center; justify-content: center; }
+
+  /* FAB */
+  .fab { position: fixed; bottom: 80px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--orange); color: white; border: none; font-size: 28px; cursor: pointer; box-shadow: 0 4px 20px rgba(232,101,10,0.4); z-index: 99; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; }
+  .fab:active { transform: scale(0.93); }
+
+  /* STATS */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-border); padding: 14px; text-align: center; }
+  .stat-number { font-size: 28px; font-weight: 700; color: var(--navy); }
+  .stat-label { font-size: 11px; color: var(--gray-text); font-weight: 500; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* CHARTS */
+  .bar-chart { margin-top: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .bar-label { font-size: 12px; color: var(--gray-text); width: 90px; flex-shrink: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-wrap { flex: 1; background: var(--gray-bg); border-radius: 4px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; background: var(--orange); transition: width 0.5s; }
+  .bar-val { font-size: 11px; font-weight: 600; color: var(--navy); width: 28px; text-align: right; }
+
+  /* CLIENT LIST */
+  .client-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--white); border-bottom: 1px solid var(--gray-border); cursor: pointer; }
+  .client-item:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+  .client-item:last-child { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
+  .client-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--orange-light); color: var(--orange); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .client-name { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .client-meta { font-size: 12px; color: var(--gray-text); }
+
+  /* SECTION HEADER */
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .section-title { font-size: 16px; font-weight: 700; color: var(--navy); }
+
+  /* VOICE */
+  .voice-btn { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1.5px dashed var(--gray-border); border-radius: var(--radius-sm); background: var(--gray-bg); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--gray-text); font-weight: 500; width: 100%; margin-bottom: 8px; }
+  .voice-btn.recording { border-color: var(--danger); background: var(--danger-bg); color: var(--danger); }
+  .voice-btn svg { width: 18px; height: 18px; }
+  
+  /* TIMELINE */
+  .timeline-item { display: flex; gap: 12px; padding-bottom: 16px; }
+  .timeline-dot-wrap { display: flex; flex-direction: column; align-items: center; }
+  .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--orange); flex-shrink: 0; margin-top: 4px; }
+  .timeline-line { width: 2px; flex: 1; background: var(--gray-border); margin-top: 4px; }
+  .timeline-date { font-size: 11px; color: var(--gray-text); font-weight: 600; }
+  .timeline-content { font-size: 13px; color: var(--navy); line-height: 1.5; }
+  .timeline-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+  .badge { padding: 3px 9px; border-radius: 50px; font-size: 11px; font-weight: 600; }
+  .badge-success { background: var(--success-bg); color: var(--success); }
+  .badge-danger { background: var(--danger-bg); color: var(--danger); }
+  .badge-warning { background: var(--warning-bg); color: var(--warning); }
+  .badge-info { background: var(--orange-light); color: var(--orange); }
+
+  /* COMPANY SELECTOR */
+  .company-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .company-tab { flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 1.5px solid var(--gray-border); background: var(--white); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; color: var(--gray-text); transition: all 0.15s; }
+  .company-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+  /* SEARCH */
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; stroke: var(--gray-text); }
+  .search-wrap input { padding-left: 38px; }
+
+  /* PROFILE PICKER */
+  .profile-modal { position: fixed; inset: 0; background: rgba(26,37,64,0.5); z-index: 300; display: flex; align-items: flex-end; }
+  .profile-list { background: var(--white); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; margin: 0 auto; padding: 24px 20px 40px; }
+  .profile-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gray-border); cursor: pointer; }
+  .profile-item:last-child { border-bottom: none; }
+  .profile-company { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray-text); font-weight: 600; }
+  .profile-name { font-size: 15px; font-weight: 600; color: var(--navy); }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--gray-text); }
+  .empty-state svg { width: 48px; height: 48px; stroke: var(--gray-border); margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* PAGE TITLE */
+  .page-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--navy); margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--gray-text); margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="app-header">
+  <div class="header-top">
+    <div>
+      <span>CRM Commercial</span>
+      <h1>Chamorin & Penez Herman</h1>
+    </div>
+    <div class="user-badge" onclick="showProfilePicker()">
+      <span id="currentUserBadge">...</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: AGENDA -->
+<div class="screen active" id="screen-agenda">
+  <h2 class="page-title">Agenda</h2>
+  <p class="page-sub" id="agenda-user-name">—</p>
+
+  <div class="date-nav">
+    <button onclick="changeWeek(-1)">‹</button>
+    <span class="date-display" id="dateDisplay">Semaine du …</span>
+    <button onclick="changeWeek(1)">›</button>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">Rendez-vous</span>
+    <button class="btn btn-ghost btn-sm" onclick="openAddEvent()">+ Ajouter</button>
+  </div>
+  <div id="eventList"></div>
+</div>
+
+<!-- SCREEN: PLANNING -->
+<div class="screen" id="screen-planning">
+  <h2 class="page-title">Planning</h2>
+  <p class="page-sub" id="planning-user-name">—</p>
+
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button class="company-tab active" id="plan-tab-semaine" onclick="setPlanView('semaine',this)" style="flex:1">Semaine</button>
+    <button class="company-tab" id="plan-tab-mois" onclick="setPlanView('mois',this)" style="flex:1">Mois</button>
+  </div>
+
+  <div class="date-nav" id="plan-date-nav">
+    <button onclick="changePlanPeriod(-1)">‹</button>
+    <span class="date-display" id="planDateDisplay">…</span>
+    <button onclick="changePlanPeriod(1)">›</button>
+  </div>
+
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap" id="planLegend"></div>
+
+  <div id="planningContent"></div>
+
+  <div class="card" id="planSummaryCard" style="margin-top:4px">
+    <div class="card-title">Récapitulatif</div>
+    <div id="planSummary"></div>
+  </div>
+</div>
+
+<!-- SCREEN: COMPTE RENDU -->
+<div class="screen" id="screen-cr">
+  <h2 class="page-title">Compte Rendu</h2>
+  <p class="page-sub" id="cr-user-name">—</p>
+
+  <div class="card">
+    <div class="form-group">
+      <label>Client</label>
+      <input type="text" id="cr-client" placeholder="Nom du client…" list="clientSuggestions">
+      <datalist id="clientSuggestions"></datalist>
+    </div>
+    <div class="form-group">
+      <label>Date de visite</label>
+      <input type="date" id="cr-date">
+    </div>
+    <div class="form-group">
+      <label>Type de visite</label>
+      <select id="cr-type">
+        <option value="">Sélectionner…</option>
+        <option>Visite Magasin</option>
+        <option>Visite Prospect</option>
+        <option>Visite Rapide</option>
+        <option>Rdv Téléphonique</option>
+        <option>Réunion Commerciale</option>
+        <option>Salon</option>
+        <option>Implantation</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Commentaire</div>
+    <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+      <span id="voiceBtnText">Dicter le commentaire</span>
+    </button>
+    <textarea id="cr-comment" placeholder="Saisir ou dicter votre compte rendu…" rows="5"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Informations visite</div>
+    <div class="form-group">
+      <label>Prise de commande</label>
+      <div class="toggle-group">
+        <button class="toggle-btn yes" onclick="setToggle('cmd','oui',this)">✓ Oui</button>
+        <button class="toggle-btn no" onclick="setToggle('cmd','non',this)">✗ Non</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Présence expo</label>
+      <div class="toggle-group">
+        <button class="toggle-btn yes" onclick="setToggle('expo','oui',this)">✓ Oui</button>
+        <button class="toggle-btn no" onclick="setToggle('expo','non',this)">✗ Non</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Mise en place</label>
+      <div class="toggle-group">
+        <button class="toggle-btn yes" onclick="setToggle('mep','oui',this)">✓ Oui</button>
+        <button class="toggle-btn no" onclick="setToggle('mep','non',this)">✗ Non</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="saveCR()">Enregistrer le compte rendu</button>
+</div>
+
+<!-- SCREEN: SUIVI -->
+<div class="screen" id="screen-suivi">
+  <h2 class="page-title">Suivi Client</h2>
+  <p class="page-sub" id="suivi-user-name">—</p>
+
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="Rechercher un client…" oninput="filterClients(this.value)" id="clientSearch">
+  </div>
+
+  <div id="clientList"></div>
+</div>
+
+<!-- SCREEN: STATS -->
+<div class="screen" id="screen-stats">
+  <h2 class="page-title">Statistiques</h2>
+  <p class="page-sub" id="stats-user-name">—</p>
+
+  <div class="card-title" style="margin-bottom:8px">Période</div>
+  <div class="company-tabs" style="margin-bottom:16px">
+    <button class="company-tab active" onclick="setStatPeriod('mois',this)">Ce mois</button>
+    <button class="company-tab" onclick="setStatPeriod('trimestre',this)">Trimestre</button>
+    <button class="company-tab" onclick="setStatPeriod('annee',this)">Année</button>
+  </div>
+
+  <div class="stat-grid" id="globalStats"></div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title">Visites par commercial</div>
+    <div class="bar-chart" id="chartCommercial"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title">Types de rendez-vous</div>
+    <div class="bar-chart" id="chartTypes"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title">Taux de commande</div>
+    <div class="bar-chart" id="chartCommande"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Ratio visites / jour ouvré</div>
+    <div id="statsJoursOuvres" style="margin-bottom:10px"></div>
+    <div class="bar-chart" id="chartRatio"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="switchTab('agenda')" id="nav-agenda">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Agenda
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchTab('planning')" id="nav-planning">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="14" x2="7" y2="18"/><line x1="12" y1="14" x2="12" y2="16"/><line x1="17" y1="14" x2="17" y2="18"/></svg>
+    Planning
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchTab('cr')" id="nav-cr">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    CR
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchTab('suivi')" id="nav-suivi">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Suivi
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchTab('stats')" id="nav-stats">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Stats
+    <div class="nav-dot"></div>
+  </button>
+</nav>
+
+<!-- FAB for Agenda -->
+<button class="fab" id="fab-agenda" onclick="openAddEvent()">+</button>
+
+<!-- MODAL: Add Event -->
+<div class="modal-overlay" id="modal-event" style="display:none" onclick="closeModalEvent(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="modal-title" id="modalEventTitle">Nouveau rendez-vous</div>
+      <button class="modal-close" onclick="closeModal('modal-event')">×</button>
+    </div>
+    <div class="form-group"><label>Type de RDV</label>
+      <select id="ev-type">
+        <option>Congés</option><option>Home Office</option><option>Implantation</option>
+        <option>Rdv Téléphonique</option><option>Réunion Commerciale</option>
+        <option>Salon</option><option>Visite Magasin</option>
+        <option>Visite Prospect</option><option>Visite Rapide</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Client / Lieu</label><input type="text" id="ev-client" placeholder="Client ou lieu…"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Date</label><input type="date" id="ev-date"></div>
+      <div class="form-group"><label>Heure</label><input type="time" id="ev-time"></div>
+    </div>
+    <div class="form-group"><label>Durée</label>
+      <select id="ev-duration">
+        <option value="30">30 min</option><option value="60" selected>1h</option>
+        <option value="90">1h30</option><option value="120">2h</option>
+        <option value="180">3h</option><option value="480">Journée</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="ev-notes" placeholder="Notes optionnelles…" rows="3"></textarea></div>
+    <button class="btn btn-primary" onclick="saveEvent()">Enregistrer</button>
+    <button class="btn btn-danger" style="width:100%;justify-content:center;margin-top:8px;display:none" id="btnDeleteEvent" onclick="deleteCurrentEvent()">Supprimer</button>
+  </div>
+</div>
+
+<!-- MODAL: Client Detail -->
+<div class="modal-overlay" id="modal-client" style="display:none" onclick="closeModalEvent(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="modal-title" id="clientModalName">Client</div>
+      <button class="modal-close" onclick="closeModal('modal-client')">×</button>
+    </div>
+    <div id="clientModalStats" class="stat-grid" style="margin-bottom:16px"></div>
+    <div class="card-title">Historique des visites</div>
+    <div id="clientTimeline"></div>
+  </div>
+</div>
+
+<!-- PROFILE PICKER -->
+<div class="profile-modal" id="profileModal" style="display:none" onclick="closeProfilePicker(event)">
+  <div class="profile-list">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="margin-bottom:16px">Choisir un commercial</div>
+    <div id="profileListItems"></div>
+  </div>
+</div>
+
+<script>
+// ============ DATA ============
+const COMMERCIAUX = {
+  'CHAMORIN': ['AITA','JACQUET','CAMERON','SOUBIELLE','IZARD'],
+  'PENEZ HERMAN': ['OLMICCIA','PARE','GUYON','TEREBUS']
+};
+
+const TYPE_COLORS = {
+  'Congés': '#8B5CF6', 'Home Office': '#64748B', 'Implantation': '#0EA5E9',
+  'Rdv Téléphonique': '#10B981', 'Réunion Commerciale': '#F59E0B',
+  'Salon': '#EC4899', 'Visite Magasin': '#E8650A',
+  'Visite Prospect': '#6366F1', 'Visite Rapide': '#14B8A6'
+};
+
+let currentUser = localStorage.getItem('crm_user') || 'JACQUET';
+let currentCompany = localStorage.getItem('crm_company') || 'CHAMORIN';
+let currentWeekOffset = 0;
+let editingEventId = null;
+let crToggles = { cmd: null, expo: null, mep: null };
+let statPeriod = 'mois';
+let isRecording = false;
+let recognition = null;
+
+// ---- Storage ----
+function loadData(key, def=[]) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; }
+}
+function saveData(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+// ============ INIT ============
+function init() {
+  updateUserBadge();
+  renderEventList();
+  renderPlanning();
+  initCRDate();
+  renderClientList();
+  renderStats();
+  buildClientSuggestions();
+  buildProfileList();
+}
+
+function updateUserBadge() {
+  document.getElementById('currentUserBadge').textContent = currentUser;
+  ['agenda','planning','cr','suivi','stats'].forEach(s => {
+    const el = document.getElementById(s+'-user-name');
+    if(el) el.textContent = currentUser + ' · ' + currentCompany;
+  });
+}
+
+// ============ TABS ============
+function switchTab(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  document.getElementById('fab-agenda').style.display = (name==='agenda') ? 'flex' : 'none';
+  if(name==='agenda') renderEventList();
+  if(name==='planning') renderPlanning();
+  if(name==='suivi') renderClientList();
+  if(name==='stats') renderStats();
+}
+
+let planView = 'semaine';
+let planOffset = 0;
+
+// ============ AGENDA ============
+function getWeekDates(offset=0) {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day===0?6:day-1) + offset*7);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  return { mon, sun };
+}
+
+function formatDate(d) { return d.toISOString().split('T')[0]; }
+function displayDate(d) {
+  return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function changeWeek(dir) {
+  currentWeekOffset += dir;
+  renderEventList();
+}
+
+function renderEventList() {
+  const {mon, sun} = getWeekDates(currentWeekOffset);
+  document.getElementById('dateDisplay').textContent =
+    displayDate(mon) + ' – ' + displayDate(sun);
+
+  const events = loadData('crm_events');
+  const monStr = formatDate(mon), sunStr = formatDate(sun);
+  const filtered = events
+    .filter(e => e.user === currentUser && e.date >= monStr && e.date <= sunStr)
+    .sort((a,b) => (a.date+a.time) < (b.date+b.time) ? -1 : 1);
+
+  const el = document.getElementById('eventList');
+  if(!filtered.length) {
+    el.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><p>Aucun RDV cette semaine</p></div>`;
+    return;
+  }
+
+  let html = '';
+  let lastDate = '';
+  filtered.forEach(ev => {
+    if(ev.date !== lastDate) {
+      lastDate = ev.date;
+      const d = new Date(ev.date+'T12:00:00');
+      html += `<div style="font-size:12px;font-weight:600;color:var(--gray-text);text-transform:uppercase;letter-spacing:0.8px;margin:14px 0 8px;">${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>`;
+    }
+    const color = TYPE_COLORS[ev.type] || '#E8650A';
+    html += `<div class="event-card" onclick="openEditEvent('${ev.id}')">
+      <div class="event-color" style="background:${color}"></div>
+      <div style="flex:1">
+        <div class="event-time">${ev.time} · ${ev.duration<60?ev.duration+'min':(ev.duration/60)+'h'}</div>
+        <div class="event-title">${ev.client||ev.type}</div>
+        <div class="event-sub">${ev.type}${ev.notes?' · '+ev.notes.slice(0,40):''}</div>
+        <span class="event-type-badge" style="background:${color}18;color:${color}">${ev.type}</span>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function openAddEvent() {
+  editingEventId = null;
+  document.getElementById('modalEventTitle').textContent = 'Nouveau rendez-vous';
+  document.getElementById('ev-type').value = 'Visite Magasin';
+  document.getElementById('ev-client').value = '';
+  document.getElementById('ev-date').value = formatDate(new Date());
+  document.getElementById('ev-time').value = '09:00';
+  document.getElementById('ev-duration').value = '60';
+  document.getElementById('ev-notes').value = '';
+  document.getElementById('btnDeleteEvent').style.display = 'none';
+  document.getElementById('modal-event').style.display = 'flex';
+}
+
+function openEditEvent(id) {
+  const events = loadData('crm_events');
+  const ev = events.find(e => e.id===id);
+  if(!ev) return;
+  editingEventId = id;
+  document.getElementById('modalEventTitle').textContent = 'Modifier le RDV';
+  document.getElementById('ev-type').value = ev.type;
+  document.getElementById('ev-client').value = ev.client;
+  document.getElementById('ev-date').value = ev.date;
+  document.getElementById('ev-time').value = ev.time;
+  document.getElementById('ev-duration').value = ev.duration;
+  document.getElementById('ev-notes').value = ev.notes||'';
+  document.getElementById('btnDeleteEvent').style.display = 'flex';
+  document.getElementById('modal-event').style.display = 'flex';
+}
+
+function saveEvent() {
+  const ev = {
+    id: editingEventId || Date.now().toString(),
+    user: currentUser, company: currentCompany,
+    type: document.getElementById('ev-type').value,
+    client: document.getElementById('ev-client').value,
+    date: document.getElementById('ev-date').value,
+    time: document.getElementById('ev-time').value,
+    duration: parseInt(document.getElementById('ev-duration').value),
+    notes: document.getElementById('ev-notes').value
+  };
+  let events = loadData('crm_events');
+  if(editingEventId) { events = events.map(e => e.id===editingEventId ? ev : e); }
+  else { events.push(ev); }
+  saveData('crm_events', events);
+  closeModal('modal-event');
+  renderEventList();
+}
+
+function deleteCurrentEvent() {
+  if(!editingEventId) return;
+  if(!confirm('Supprimer ce rendez-vous ?')) return;
+  let events = loadData('crm_events');
+  events = events.filter(e => e.id !== editingEventId);
+  saveData('crm_events', events);
+  closeModal('modal-event');
+  renderEventList();
+}
+
+// ============ PLANNING ============
+function setPlanView(v, btn) {
+  planView = v;
+  planOffset = 0;
+  document.querySelectorAll('#screen-planning .company-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPlanning();
+}
+
+function changePlanPeriod(dir) { planOffset += dir; renderPlanning(); }
+
+function renderPlanning() {
+  const events = loadData('crm_events');
+  if(planView === 'semaine') renderPlanWeek(events);
+  else renderPlanMonth(events);
+  renderPlanLegend();
+}
+
+function getPlanWeekDates() {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day===0?6:day-1) + planOffset*7);
+  const days = [];
+  for(let i=0;i<7;i++) { const d=new Date(mon); d.setDate(mon.getDate()+i); days.push(d); }
+  return days;
+}
+
+function renderPlanWeek(events) {
+  const days = getPlanWeekDates();
+  const monStr = formatDate(days[0]), sunStr = formatDate(days[6]);
+  document.getElementById('planDateDisplay').textContent =
+    days[0].toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) + ' – ' +
+    days[6].toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+
+  const DAY_LABELS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+
+  const filtered = events.filter(e => e.date >= monStr && e.date <= sunStr);
+
+  let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed">';
+  html += '<colgroup><col style="width:44px">';
+  for(let i=0;i<7;i++) html += '<col>';
+  html += '</colgroup><thead><tr>';
+  html += '<th style="background:var(--navy-mid);padding:6px 2px;font-size:9px;color:#9DB4CC;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1)"></th>';
+  days.forEach((d,i) => {
+    const isToday = formatDate(d) === formatDate(new Date());
+    const dStr = d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','');
+    html += `<th style="background:${isToday?'var(--orange)':'var(--navy)'};color:white;padding:6px 2px;font-size:10px;font-weight:700;text-align:center;border-left:1px solid rgba(255,255,255,0.1);border-bottom:1px solid rgba(255,255,255,0.1)">
+      <div>${dStr.charAt(0).toUpperCase()+dStr.slice(1)}</div>
+      <div style="font-size:13px;font-weight:700">${d.getDate()}</div>
+    </th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  allUsers.forEach(u => {
+    const uEvs = filtered.filter(e => e.user === u);
+    if(!uEvs.length) return;
+    const initials = u.slice(0,2);
+    const isCham = COMMERCIAUX['CHAMORIN'].includes(u);
+    html += `<tr><td style="background:var(--gray-bg);padding:4px;text-align:center;border-bottom:1px solid var(--gray-border);border-right:1px solid var(--gray-border)">
+      <div style="width:28px;height:28px;border-radius:50%;background:${isCham?'var(--orange-light)':'#EEF2FF'};color:${isCham?'var(--orange)':'#6366F1'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;margin:0 auto">${initials}</div>
+      <div style="font-size:8px;color:var(--gray-text);margin-top:2px">${u}</div>
+    </td>`;
+    days.forEach(d => {
+      const ds = formatDate(d);
+      const dayEvs = uEvs.filter(e => e.date === ds);
+      const isToday = ds === formatDate(new Date());
+      html += `<td style="border-left:1px solid var(--gray-border);border-bottom:1px solid var(--gray-border);padding:3px;vertical-align:top;min-height:52px;background:${isToday?'#FFF8F4':'var(--white)'}">`;
+      dayEvs.forEach(ev => {
+        const col = TYPE_COLORS[ev.type] || '#E8650A';
+        const label = ev.client || ev.type.split(' ')[0];
+        html += `<span class="plan-event-chip" style="background:${col}22;color:${col};border-left:2px solid ${col}" onclick="openEditEvent('${ev.id}')" title="${ev.type}: ${ev.client||''} ${ev.time}">${label}</span>`;
+      });
+      if(!dayEvs.length) html += `<span style="display:block;height:32px"></span>`;
+      html += '</td>';
+    });
+    html += '</tr>';
+  });
+
+  const emptyDays = days.map(d => {
+    const ds = formatDate(d);
+    return filtered.filter(e => e.date === ds).length;
+  });
+  const hasAny = emptyDays.some(n => n > 0);
+  if(!hasAny) {
+    html += `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--gray-text);font-size:13px">Aucun RDV cette semaine pour l'équipe</td></tr>`;
+  }
+
+  html += '</tbody></table></div>';
+  document.getElementById('planningContent').innerHTML = html;
+  renderPlanSummaryWeek(filtered, days);
+}
+
+function renderPlanMonth(events) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + planOffset;
+  const refDate = new Date(year, month, 1);
+  const dispMonth = refDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  document.getElementById('planDateDisplay').textContent = dispMonth.charAt(0).toUpperCase()+dispMonth.slice(1);
+
+  const firstDay = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+  const lastDay = new Date(refDate.getFullYear(), refDate.getMonth()+1, 0);
+  const startDow = (firstDay.getDay()+6)%7;
+  const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
+
+  const monStr = formatDate(firstDay), sunStr = formatDate(lastDay);
+  const filtered = events.filter(e => e.date >= monStr && e.date <= sunStr);
+
+  const DAY_HEADS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  let html = '<div class="cal-grid">';
+  DAY_HEADS.forEach(d => { html += `<div class="cal-head">${d}</div>`; });
+
+  const todayStr = formatDate(new Date());
+  for(let i=0;i<totalCells;i++) {
+    const cellDate = new Date(firstDay);
+    cellDate.setDate(1 - startDow + i);
+    const ds = formatDate(cellDate);
+    const isOther = cellDate.getMonth() !== firstDay.getMonth();
+    const isToday = ds === todayStr;
+    const dayEvs = filtered.filter(e => e.date === ds);
+    html += `<div class="cal-cell" style="${isOther?'background:var(--gray-bg)':''}">`;
+    html += `<div class="cal-day-num${isOther?' other-month':''}${isToday?' today':''}">${cellDate.getDate()}</div>`;
+    dayEvs.slice(0,2).forEach(ev => {
+      const col = TYPE_COLORS[ev.type] || '#E8650A';
+      const label = (ev.client||ev.type).slice(0,8);
+      html += `<span class="cal-chip" style="background:${col}22;color:${col}" title="${ev.user}: ${ev.type}">${label}</span>`;
+    });
+    if(dayEvs.length > 2) html += `<span class="cal-chip" style="background:var(--gray-bg);color:var(--gray-text)">+${dayEvs.length-2}</span>`;
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('planningContent').innerHTML = html;
+  renderPlanSummaryMonth(filtered, firstDay);
+}
+
+function renderPlanLegend() {
+  const items = Object.entries(TYPE_COLORS).map(([t,c]) =>
+    `<span style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--gray-text)"><span style="width:8px;height:8px;border-radius:2px;background:${c};flex-shrink:0;display:inline-block"></span>${t}</span>`
+  ).join('');
+  document.getElementById('planLegend').innerHTML = items;
+}
+
+function renderPlanSummaryWeek(filtered, days) {
+  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+  const withEvs = allUsers.filter(u => filtered.some(e=>e.user===u));
+  let html = '';
+  withEvs.forEach(u => {
+    const uEvs = filtered.filter(e=>e.user===u);
+    const byType = {};
+    uEvs.forEach(e => { byType[e.type] = (byType[e.type]||0)+1; });
+    const chips = Object.entries(byType).map(([t,n]) => {
+      const col = TYPE_COLORS[t]||'#E8650A';
+      return `<span style="background:${col}18;color:${col};border-radius:50px;padding:2px 8px;font-size:11px;font-weight:600">${n}× ${t}</span>`;
+    }).join('');
+    html += `<div style="padding:8px 0;border-bottom:1px solid var(--gray-border);display:flex;gap:10px;align-items:flex-start">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);width:70px;flex-shrink:0">${u}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
+    </div>`;
+  });
+  document.getElementById('planSummary').innerHTML = html || '<p style="color:var(--gray-text);font-size:13px">Aucun RDV cette semaine.</p>';
+}
+
+function renderPlanSummaryMonth(filtered, refDate) {
+  const total = filtered.length;
+  const byType = {};
+  filtered.forEach(e => { byType[e.type]=(byType[e.type]||0)+1; });
+  const chips = Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,n]) => {
+    const col = TYPE_COLORS[t]||'#E8650A';
+    return `<span style="background:${col}18;color:${col};border-radius:50px;padding:2px 8px;font-size:11px;font-weight:600">${n}× ${t}</span>`;
+  }).join('');
+  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+  const userRows = allUsers.map(u => {
+    const n = filtered.filter(e=>e.user===u).length;
+    if(!n) return '';
+    return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gray-border);font-size:12px"><span style="color:var(--navy);font-weight:600">${u}</span><span style="color:var(--gray-text)">${n} RDV</span></div>`;
+  }).join('');
+  document.getElementById('planSummary').innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+      <span style="font-size:26px;font-weight:700;color:var(--navy)">${total}</span>
+      <span style="font-size:13px;color:var(--gray-text)">rendez-vous au total</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${chips||'<span style="color:var(--gray-text);font-size:13px">Aucune donnée</span>'}</div>
+    ${userRows}
+  `;
+}
+
+// ============ COMPTE RENDU ============
+function initCRDate() { document.getElementById('cr-date').value = formatDate(new Date()); }
+
+function setToggle(field, val, btn) {
+  const group = btn.closest('.toggle-group');
+  group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  crToggles[field] = val;
+}
+
+function toggleVoice() {
+  if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('La dictée vocale n\'est pas supportée par votre navigateur. Utilisez Chrome ou Safari.');
+    return;
+  }
+  if(isRecording) {
+    recognition && recognition.stop();
+    isRecording = false;
+    document.getElementById('voiceBtn').classList.remove('recording');
+    document.getElementById('voiceBtnText').textContent = 'Dicter le commentaire';
+  } else {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = 'fr-FR'; recognition.continuous = true; recognition.interimResults = true;
+    recognition.onresult = (e) => {
+      let t = '';
+      for(let i=e.resultIndex;i<e.results.length;i++) t += e.results[i][0].transcript;
+      document.getElementById('cr-comment').value = t;
+    };
+    recognition.onend = () => {
+      isRecording = false;
+      document.getElementById('voiceBtn').classList.remove('recording');
+      document.getElementById('voiceBtnText').textContent = 'Dicter le commentaire';
+    };
+    recognition.start();
+    isRecording = true;
+    document.getElementById('voiceBtn').classList.add('recording');
+    document.getElementById('voiceBtnText').textContent = '● Enregistrement… (cliquer pour arrêter)';
+  }
+}
+
+function saveCR() {
+  const client = document.getElementById('cr-client').value.trim();
+  const date = document.getElementById('cr-date').value;
+  const type = document.getElementById('cr-type').value;
+  const comment = document.getElementById('cr-comment').value.trim();
+  if(!client || !date || !type) { alert('Veuillez remplir le client, la date et le type de visite.'); return; }
+  const cr = {
+    id: Date.now().toString(),
+    user: currentUser, company: currentCompany,
+    client, date, type, comment,
+    cmd: crToggles.cmd, expo: crToggles.expo, mep: crToggles.mep,
+    createdAt: new Date().toISOString()
+  };
+  let crs = loadData('crm_crs');
+  crs.push(cr);
+  saveData('crm_crs', crs);
+  buildClientSuggestions();
+  // Reset
+  document.getElementById('cr-client').value = '';
+  document.getElementById('cr-comment').value = '';
+  document.getElementById('cr-type').value = '';
+  document.getElementById('cr-date').value = formatDate(new Date());
+  crToggles = { cmd:null, expo:null, mep:null };
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  alert('✓ Compte rendu enregistré !');
+}
+
+// ============ SUIVI ============
+function buildClientSuggestions() {
+  const crs = loadData('crm_crs');
+  const clients = [...new Set(crs.map(c=>c.client))].sort();
+  const dl = document.getElementById('clientSuggestions');
+  if(dl) dl.innerHTML = clients.map(c=>`<option value="${c}">`).join('');
+}
+
+function filterClients(q) { renderClientList(q); }
+
+function renderClientList(q='') {
+  const crs = loadData('crm_crs');
+  const clientMap = {};
+  crs.forEach(cr => {
+    if(!clientMap[cr.client]) clientMap[cr.client] = [];
+    clientMap[cr.client].push(cr);
+  });
+  const clients = Object.keys(clientMap).filter(c => c.toLowerCase().includes(q.toLowerCase())).sort();
+  const el = document.getElementById('clientList');
+  if(!clients.length) {
+    el.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><p>Aucun client trouvé</p></div>`;
+    return;
+  }
+  let html = '<div style="border-radius:var(--radius);overflow:hidden;border:1px solid var(--gray-border)">';
+  clients.forEach(c => {
+    const visits = clientMap[c].length;
+    const last = clientMap[c].sort((a,b)=>b.date>a.date?1:-1)[0];
+    const initials = c.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    html += `<div class="client-item" onclick="openClientModal('${c.replace(/'/g,"\\'")}')">
+      <div class="client-avatar">${initials}</div>
+      <div style="flex:1">
+        <div class="client-name">${c}</div>
+        <div class="client-meta">${visits} visite${visits>1?'s':''} · Dernier : ${last.date}</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0B8CC"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function openClientModal(client) {
+  const crs = loadData('crm_crs').filter(c=>c.client===client).sort((a,b)=>b.date>a.date?1:-1);
+  document.getElementById('clientModalName').textContent = client;
+
+  // Stats
+  const total = crs.length;
+  const cmds = crs.filter(c=>c.cmd==='oui').length;
+  const expos = crs.filter(c=>c.expo==='oui').length;
+  const meps = crs.filter(c=>c.mep==='oui').length;
+  document.getElementById('clientModalStats').innerHTML = `
+    <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Visites</div></div>
+    <div class="stat-card"><div class="stat-number">${cmds}</div><div class="stat-label">Commandes</div></div>
+    <div class="stat-card"><div class="stat-number">${expos}</div><div class="stat-label">Expos</div></div>
+    <div class="stat-card"><div class="stat-number">${meps}</div><div class="stat-label">Mises en place</div></div>
+  `;
+
+  // Timeline
+  let html = '';
+  crs.forEach((cr,i) => {
+    const isLast = i===crs.length-1;
+    html += `<div class="timeline-item">
+      <div class="timeline-dot-wrap">
+        <div class="timeline-dot"></div>
+        ${!isLast?'<div class="timeline-line"></div>':''}
+      </div>
+      <div style="flex:1;padding-bottom:4px">
+        <div class="timeline-date">${cr.date} · ${cr.user}</div>
+        <div style="font-size:12px;color:var(--orange);font-weight:600;margin-bottom:4px">${cr.type}</div>
+        ${cr.comment?`<div class="timeline-content">${cr.comment}</div>`:''}
+        <div class="timeline-badges">
+          ${cr.cmd?`<span class="badge ${cr.cmd==='oui'?'badge-success':'badge-danger'}">Commande: ${cr.cmd}</span>`:''}
+          ${cr.expo?`<span class="badge ${cr.expo==='oui'?'badge-success':'badge-danger'}">Expo: ${cr.expo}</span>`:''}
+          ${cr.mep?`<span class="badge ${cr.mep==='oui'?'badge-success':'badge-danger'}">MEP: ${cr.mep}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('clientTimeline').innerHTML = html || '<p style="color:var(--gray-text);font-size:13px">Aucune visite enregistrée.</p>';
+  document.getElementById('modal-client').style.display = 'flex';
+}
+
+// ============ STATS ============
+function setStatPeriod(p, btn) {
+  statPeriod = p;
+  document.querySelectorAll('.company-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderStats();
+}
+
+function filterByPeriod(items) {
+  const now = new Date();
+  return items.filter(item => {
+    const d = new Date(item.date+'T12:00:00');
+    if(statPeriod==='mois') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    if(statPeriod==='trimestre') {
+      const q = Math.floor(now.getMonth()/3);
+      return Math.floor(d.getMonth()/3)===q && d.getFullYear()===now.getFullYear();
+    }
+    return d.getFullYear()===now.getFullYear();
+  });
+}
+
+function countJoursOuvres(startDate, endDate) {
+  let count = 0;
+  const cur = new Date(startDate);
+  cur.setHours(12,0,0,0);
+  const end = new Date(endDate);
+  end.setHours(12,0,0,0);
+  while(cur <= end) {
+    const dow = cur.getDay();
+    if(dow !== 0 && dow !== 6) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
+function getPeriodBounds() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if(statPeriod==='mois') {
+    return { start: new Date(y,m,1), end: new Date(y,m+1,0), today: now };
+  }
+  if(statPeriod==='trimestre') {
+    const q = Math.floor(m/3);
+    return { start: new Date(y,q*3,1), end: new Date(y,q*3+3,0), today: now };
+  }
+  return { start: new Date(y,0,1), end: new Date(y,11,31), today: now };
+}
+
+function renderStats() {
+  const allCrs = loadData('crm_crs');
+  const allEvs = loadData('crm_events');
+  const crs = filterByPeriod(allCrs);
+  const evs = filterByPeriod(allEvs);
+
+  const { start, end, today } = getPeriodBounds();
+  const joursTotal = countJoursOuvres(start, end);
+  const joursEcoules = countJoursOuvres(start, today < end ? today : end);
+
+  // Global
+  const clients = new Set(crs.map(c=>c.client)).size;
+  const cmds = crs.filter(c=>c.cmd==='oui').length;
+  const ratioEquipe = joursEcoules > 0 ? (crs.length / joursEcoules).toFixed(2) : '—';
+  document.getElementById('globalStats').innerHTML = `
+    <div class="stat-card"><div class="stat-number">${crs.length}</div><div class="stat-label">Visites</div></div>
+    <div class="stat-card"><div class="stat-number">${clients}</div><div class="stat-label">Clients</div></div>
+    <div class="stat-card"><div class="stat-number">${cmds}</div><div class="stat-label">Commandes</div></div>
+    <div class="stat-card"><div class="stat-number">${evs.length}</div><div class="stat-label">RDV Agenda</div></div>
+  `;
+
+  // By commercial
+  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+  const byUser = allUsers.map(u => ({ u, n: crs.filter(c=>c.user===u).length })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
+  const maxU = byUser[0]?.n || 1;
+  document.getElementById('chartCommercial').innerHTML = byUser.map(x=>`
+    <div class="bar-row"><div class="bar-label">${x.u}</div><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(x.n/maxU*100)}%"></div></div><div class="bar-val">${x.n}</div></div>
+  `).join('') || '<p style="color:var(--gray-text);font-size:13px">Aucune donnée</p>';
+
+  // By type
+  const types = Object.keys(TYPE_COLORS);
+  const byType = types.map(t => ({ t, n: crs.filter(c=>c.type===t).length })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
+  const maxT = byType[0]?.n || 1;
+  document.getElementById('chartTypes').innerHTML = byType.map(x=>`
+    <div class="bar-row"><div class="bar-label">${x.t}</div><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(x.n/maxT*100)}%;background:${TYPE_COLORS[x.t]}"></div></div><div class="bar-val">${x.n}</div></div>
+  `).join('') || '<p style="color:var(--gray-text);font-size:13px">Aucune donnée</p>';
+
+  // Taux commande par commercial
+  const byCmd = allUsers.map(u => {
+    const uCrs = crs.filter(c=>c.user===u);
+    if(!uCrs.length) return null;
+    const rate = Math.round(uCrs.filter(c=>c.cmd==='oui').length/uCrs.length*100);
+    return { u, rate };
+  }).filter(Boolean).sort((a,b)=>b.rate-a.rate);
+  document.getElementById('chartCommande').innerHTML = byCmd.map(x=>`
+    <div class="bar-row"><div class="bar-label">${x.u}</div><div class="bar-wrap"><div class="bar-fill" style="width:${x.rate}%;background:var(--success)"></div></div><div class="bar-val">${x.rate}%</div></div>
+  `).join('') || '<p style="color:var(--gray-text);font-size:13px">Aucune donnée</p>';
+
+  // Ratio visites / jour ouvré
+  document.getElementById('statsJoursOuvres').innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="background:var(--gray-bg);border-radius:var(--radius-sm);padding:8px 14px;flex:1;text-align:center">
+        <div style="font-size:11px;color:var(--gray-text);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Jours ouvrés écoulés</div>
+        <div style="font-size:22px;font-weight:700;color:var(--navy)">${joursEcoules}<span style="font-size:12px;color:var(--gray-text);font-weight:400"> / ${joursTotal}</span></div>
+      </div>
+      <div style="background:var(--orange-light);border-radius:var(--radius-sm);padding:8px 14px;flex:1;text-align:center">
+        <div style="font-size:11px;color:#C25008;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Moy. équipe / jour</div>
+        <div style="font-size:22px;font-weight:700;color:var(--orange)">${ratioEquipe}<span style="font-size:12px;color:#C25008;font-weight:400"> vis.</span></div>
+      </div>
+    </div>
+  `;
+  const byRatio = allUsers.map(u => {
+    const n = crs.filter(c=>c.user===u).length;
+    if(!n) return null;
+    const ratio = joursEcoules > 0 ? (n / joursEcoules) : 0;
+    return { u, n, ratio };
+  }).filter(Boolean).sort((a,b)=>b.ratio-a.ratio);
+  const maxR = byRatio[0]?.ratio || 1;
+  const TARGET = 2.0;
+  document.getElementById('chartRatio').innerHTML = byRatio.map(x => {
+    const ratioDisp = x.ratio.toFixed(2);
+    const pct = Math.round(x.ratio/Math.max(maxR,TARGET)*100);
+    const color = x.ratio >= TARGET ? 'var(--success)' : x.ratio >= TARGET*0.7 ? 'var(--warning)' : 'var(--danger)';
+    return `<div class="bar-row">
+      <div class="bar-label">${x.u}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="bar-val" style="color:${color};width:36px">${ratioDisp}</div>
+    </div>`;
+  }).join('') + (byRatio.length ? `<div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--gray-text)"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block"></span>≥ 2,0 <span style="width:10px;height:10px;border-radius:2px;background:var(--warning);display:inline-block;margin-left:8px"></span>1,4–2,0 <span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;margin-left:8px"></span>&lt; 1,4</div>` : '<p style="color:var(--gray-text);font-size:13px">Aucune donnée</p>');
+}
+
+// ============ PROFILE ============
+function buildProfileList() {
+  let html = '';
+  Object.entries(COMMERCIAUX).forEach(([company, users]) => {
+    users.forEach(u => {
+      const initials = u.slice(0,2);
+      html += `<div class="profile-item" onclick="selectUser('${u}','${company}')">
+        <div class="client-avatar" style="background:${company==='CHAMORIN'?'#FDF0E8':'#EEF2FF'};color:${company==='CHAMORIN'?'var(--orange)':'#6366F1'}">${initials}</div>
+        <div>
+          <div class="profile-company">${company}</div>
+          <div class="profile-name">${u}</div>
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('profileListItems').innerHTML = html;
+}
+
+function showProfilePicker() { document.getElementById('profileModal').style.display = 'flex'; }
+function closeProfilePicker(e) { if(e.target===document.getElementById('profileModal')) document.getElementById('profileModal').style.display='none'; }
+function selectUser(u, co) {
+  currentUser = u; currentCompany = co;
+  localStorage.setItem('crm_user', u);
+  localStorage.setItem('crm_company', co);
+  document.getElementById('profileModal').style.display = 'none';
+  updateUserBadge();
+  renderEventList();
+  renderPlanning();
+  renderClientList();
+  renderStats();
+}
+
+// ============ MODALS ============
+function closeModal(id) { document.getElementById(id).style.display='none'; }
+function closeModalEvent(e) {
+  if(e.target===document.getElementById('modal-event')) closeModal('modal-event');
+  if(e.target===document.getElementById('modal-client')) closeModal('modal-client');
+}
+
+// ============ DEMO DATA ============
+function seedDemoData() {
+  if(localStorage.getItem('crm_demo_seeded')) return;
+
+  const CLIENTS = [
+    { name:'Leroy Merlin Pau',        enseigne:'Leroy Merlin'  },
+    { name:'Leroy Merlin Bayonne',    enseigne:'Leroy Merlin'  },
+    { name:'Leroy Merlin Bordeaux',   enseigne:'Leroy Merlin'  },
+    { name:'Castorama Pau',           enseigne:'Castorama'     },
+    { name:'Castorama Tarbes',        enseigne:'Castorama'     },
+    { name:'Castorama Agen',          enseigne:'Castorama'     },
+    { name:'Jardiland Pau',           enseigne:'Jardiland'     },
+    { name:'Jardiland Bayonne',       enseigne:'Jardiland'     },
+    { name:'Jardiland Mont-de-Marsan',enseigne:'Jardiland'     },
+    { name:'Truffaut Bordeaux',       enseigne:'Truffaut'      },
+    { name:'Truffaut Biarritz',       enseigne:'Truffaut'      },
+    { name:'Truffaut Dax',            enseigne:'Truffaut'      },
+  ];
+
+  const USERS_CHAMORIN   = ['AITA','JACQUET','CAMERON','SOUBIELLE','IZARD'];
+  const USERS_PH         = ['OLMICCIA','PARE','GUYON','TEREBUS'];
+  const VISIT_TYPES = ['Visite Magasin','Visite Rapide','Visite Prospect','Implantation','Rdv Téléphonique','Réunion Commerciale'];
+  const EV_TYPES    = ['Visite Magasin','Visite Prospect','Visite Rapide','Rdv Téléphonique','Réunion Commerciale','Implantation','Salon','Home Office','Congés'];
+
+  const COMMENTAIRES = {
+    'Leroy Merlin': [
+      'RDV très positif. Le chef de rayon est intéressé par la nouvelle gamme jardinage printemps. Commande passée sur les engrais et amendements.',
+      'Visite du linéaire. Rupture constatée sur les terreaux universels. Réassort validé immédiatement. Bon relationnel avec le responsable.',
+      'Présentation des nouveautés été. Le magasin souhaite implanter un ilot promotionnel en semaine 22. À confirmer.',
+      'Rendez-vous de suivi mensuel. CA en progression +12% vs N-1. Satisfaction client au beau fixe. Prochaine visite prévue mi-juin.',
+      'Implantation de la nouvelle tête de gondole réalisée. Photos prises. Résultat très propre. Le gérant très satisfait.',
+      'Discussion autour du plan promo T3. Budget validé par le directeur de magasin. Bon partenariat.',
+    ],
+    'Castorama': [
+      'Passage rapide rayon extérieur. Facing correct, pas de rupture. Quelques étiquettes prix à repositionner.',
+      'Présentation du catalogue automne. Le buyer régional présent, bonne réception. Commande groupée en discussion.',
+      'Visite planifiée annulée par le client. Replanifiée à la semaine prochaine. Contact téléphonique fait.',
+      'Linéaire revu avec le chef de secteur. Mise en place d\'un nouveau facing sur les terreaux. Commande complémentaire passée.',
+      'RDV mensuel de suivi. Objectif de CA atteint à 94%. Discussion sur animation estivale prévue en juillet.',
+      'Prospect identifié suite réouverture magasin. Premier contact très positif. Envoi de la doc commerciale.',
+    ],
+    'Jardiland': [
+      'Visite saisonnière printanière. Rayons jardinage en pleine activité. Commande importante passée sur les substrats.',
+      'Point sur les retours produits de l\'hiver. Quelques références à ajuster. Plan d\'action convenu avec le chef de rayon.',
+      'Présentation de la gamme bio. Fort intérêt du responsable. Devis envoyé suite visite. Suivi dans 15 jours.',
+      'Implantation réalisée sur le corner terreau. Très bonne visibilité. Équipe magasin mobilisée et motivée.',
+      'RDV avec le directeur. Négociation sur les conditions tarifaires T2. Accord trouvé. Belle relation commerciale.',
+      'Passage de courtoisie. Tout va bien en rayon. Prochaine action promotionnelle confirmée pour mai.',
+    ],
+    'Truffaut': [
+      'Visite d\'un magasin premium. Positionnement haut de gamme assumé. Référencement de notre gamme prestige validé.',
+      'Réunion avec l\'acheteur régional. Présentation de 3 nouvelles références. 2 retenues pour test sur 4 magasins.',
+      'Linéaire très bien tenu. Expo en place et conforme au plan. Commande de réassort passée sur place.',
+      'Premier contact avec le nouveau directeur. Bon accueil. Présentation de notre offre globale. Très prometteur.',
+      'Visite de suivi post-implantation. Les ventes démarrent bien. Directeur satisfait du nouveau facing.',
+      'Discussion autour de l\'opération Saint-Patrick. Accord de principe pour une animation en magasin.',
+    ],
+  };
+
+  function rnd(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+  function rndBool(p=0.65) { return Math.random() < p; }
+  function dateOffset(days) {
+    const d = new Date(); d.setDate(d.getDate()-days);
+    return d.toISOString().split('T')[0];
+  }
+  function addDays(dateStr, n) {
+    const d = new Date(dateStr+'T12:00:00'); d.setDate(d.getDate()+n);
+    return d.toISOString().split('T')[0];
+  }
+  function isWeekend(dateStr) {
+    const d = new Date(dateStr+'T12:00:00'); return d.getDay()===0||d.getDay()===6;
+  }
+  function nextWorkday(dateStr) {
+    let d = dateStr;
+    while(isWeekend(d)) d = addDays(d,1);
+    return d;
+  }
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  const crs = [];
+  const events = [];
+  let id = 10000;
+
+  // On génère ~4 mois de données : jan → mai 2026
+  const allUsers = [...USERS_CHAMORIN, ...USERS_PH];
+
+  allUsers.forEach(user => {
+    const company = USERS_CHAMORIN.includes(user) ? 'CHAMORIN' : 'PENEZ HERMAN';
+    // Assign 3-5 clients per commercial
+    const myClients = CLIENTS.slice().sort(()=>Math.random()-0.5).slice(0, 3+Math.floor(Math.random()*3));
+
+    myClients.forEach(client => {
+      const enseigne = client.enseigne;
+      // 2-5 visites par client sur 4 mois
+      const nVisits = 2 + Math.floor(Math.random()*4);
+      for(let v=0; v<nVisits; v++) {
+        const daysAgo = Math.floor(Math.random()*115) + 2;
+        let dateStr = nextWorkday(dateOffset(daysAgo));
+        const hh = 8 + Math.floor(Math.random()*5);
+        const mm = rnd(['00','15','30','45']);
+        const type = v===0 && Math.random()<0.3 ? 'Visite Prospect' : rnd(['Visite Magasin','Visite Magasin','Visite Rapide','Implantation','Rdv Téléphonique']);
+        const commentaires = COMMENTAIRES[enseigne];
+        const comment = rnd(commentaires);
+        crs.push({
+          id: String(id++), user, company,
+          client: client.name,
+          date: dateStr,
+          type,
+          comment,
+          cmd:  rndBool(0.6) ? 'oui' : 'non',
+          expo: rndBool(0.5) ? 'oui' : 'non',
+          mep:  rndBool(0.45) ? 'oui' : 'non',
+          createdAt: dateStr + 'T' + pad(hh) + ':' + mm + ':00'
+        });
+        // Corresponding agenda event
+        const duration = rnd([30,60,60,90,120,480]);
+        events.push({
+          id: String(id++), user, company,
+          client: client.name,
+          date: dateStr,
+          time: pad(hh)+':'+mm,
+          duration,
+          type,
+          notes: ''
+        });
+      }
+    });
+
+    // Ajouter quelques RDV non-visite dans l'agenda (réunion, congés, home office)
+    const extras = [
+      { type:'Réunion Commerciale', daysAgo:3,  dur:120 },
+      { type:'Réunion Commerciale', daysAgo:35, dur:120 },
+      { type:'Home Office',         daysAgo:7,  dur:480 },
+      { type:'Congés',              daysAgo:50, dur:480 },
+      { type:'Salon',               daysAgo:20, dur:480 },
+    ];
+    extras.forEach(ex => {
+      if(Math.random()<0.6) {
+        let dateStr = nextWorkday(dateOffset(ex.daysAgo));
+        events.push({
+          id: String(id++), user, company,
+          client: ex.type,
+          date: dateStr,
+          time: '09:00',
+          duration: ex.dur,
+          type: ex.type,
+          notes: ''
+        });
+      }
+    });
+  });
+
+  saveData('crm_crs', crs);
+  saveData('crm_events', events);
+  localStorage.setItem('crm_demo_seeded', '1');
+}
+
+// ============ START ============
+seedDemoData();
+init();
+</script>
+</body>
+</html>
