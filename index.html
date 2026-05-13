@@ -515,7 +515,10 @@
     <div class="card">
       <div class="card-title">Articles</div>
       <div id="dvLignes"></div>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="addDvLigne()">+ Ajouter un article</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost" style="justify-content:center;font-size:13px" onclick="openArticleCatalogue()">📋 Depuis catalogue</button>
+        <button class="btn btn-ghost" style="justify-content:center;font-size:13px" onclick="addDvLigne()">✏️ Saisie manuelle</button>
+      </div>
     </div>
 
     <div class="card" style="background:var(--navy);border-color:var(--navy)">
@@ -694,6 +697,26 @@
     <div id="clientModalStats" class="stat-grid" style="margin-bottom:16px"></div>
     <div class="card-title">Historique des visites</div>
     <div id="clientTimeline"></div>
+  </div>
+</div>
+
+<!-- MODAL: Catalogue Articles -->
+<div class="modal-overlay" id="modal-catalogue-articles" style="display:none" onclick="closeModalIfOverlay(event,'modal-catalogue-articles')">
+  <div class="modal" style="max-height:88vh">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="modal-title">Sélectionner des articles</div>
+      <button class="modal-close" onclick="closeModal('modal-catalogue-articles')">×</button>
+    </div>
+    <div class="search-wrap" style="margin-bottom:12px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="articleSearchInput" placeholder="Rechercher code, désignation…" oninput="filterArticles(this.value)" style="padding-left:38px">
+    </div>
+    <div style="font-size:12px;color:var(--gray-text);margin-bottom:10px">
+      Cochez les articles à ajouter, ajustez la quantité, puis cliquez <strong>Ajouter la sélection</strong>.
+    </div>
+    <div id="articleCatalogueList" style="max-height:380px;overflow-y:auto;border:1px solid var(--gray-border);border-radius:var(--radius-sm)"></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="addSelectedArticles()">Ajouter la sélection au devis</button>
   </div>
 </div>
 
@@ -1240,7 +1263,7 @@ function openEvQuickContact() {
 const SOCIETES = {
   'CHAMORIN': {
     nom: 'CHAMORIN',
-    adresse: '12 Rue des Pyrénées\n64000 PAU',
+    adresse: 'Z.I. la Mirande - 6, rue des Potiers\n66240 Saint-Estève',
     tel: '05 59 XX XX XX',
     email: 'contact@chamorin.fr',
     siret: '123 456 789 00012',
@@ -1256,6 +1279,33 @@ const SOCIETES = {
   }
 };
 
+const CATALOGUE_ARTICLES = [
+  { code:'40337',   designation:'BORDURE DALLE AUTOPORTANTE 40X19,5X4,8 MARRON E40',        ean:'3760168465659', pv:3.75  },
+  { code:'10076',   designation:'PLAQUE SOUBT CHAPERONNEE 252.2X25 AMINCIE 33MM',            ean:'3700058812903', pv:25    },
+  { code:'7074517', designation:'PAVE KANDLA MULTICOLOR 14X14X2 CALIBRE',                    ean:'3700058804816', pv:27.04 },
+  { code:'7070327', designation:'CLAUSTRA AERATION 12X12',                                   ean:'3700227903272', pv:6.74  },
+  { code:'15023',   designation:'SAC 25KG SABLE POUR HYDROSABLAGE N°0',                      ean:'3760095559070', pv:7.25  },
+  { code:'7074264', designation:'COUVRE MUR OPTIPOSE PLAT 49X28 OCRE',                       ean:'3660227069715', pv:8.22  },
+  { code:'7074442', designation:'COUVRE MUR PLAT 100X30 GRANIT DE MARBRE BLANC',             ean:'3700227944428', pv:23.95 },
+  { code:'7074579', designation:'COQ METAL ROUILLE SUR SOCLE 41XH46CM',                      ean:'3700058812569', pv:21.95 },
+  { code:'7074589', designation:'LISA AVEC ARROSOIR METAL ROUILLE SUR SOCLE 61XH103CM',      ean:'3700058812613', pv:69.5  },
+  { code:'7074371', designation:'GANIVELLE NOISETIER 1M20 - RLX 5M écart 3/5CM',             ean:'5904335550634', pv:65.35 },
+  { code:'7072770', designation:'CHAPEAU 4 PENTES 32X32X4 OCRE',                             ean:'3660227004624', pv:17.03 },
+  { code:'7074695', designation:'FILET 20KG ROULE DALMATIEN 12/25 (BLA, BLEU, NOI)',         ean:'3701192811746', pv:9.59  },
+  { code:'48957',   designation:'BORDURE ACIER GALVA MOTIF GALETS 99X18 GRIS',               ean:'3700011204981', pv:11.95 },
+  { code:'7072362', designation:'ELT PILIER BOSSELE PRP 40X40X16,7 BLANC',                   ean:'3660227070407', pv:8.92  },
+  { code:'7070355', designation:'MAIN COURANTE LONG 50 BLANC',                               ean:'8432696855107', pv:5.35  },
+  { code:'7071662', designation:'MURET TAILLE MBP 40 OCRE PIERTEC',                          ean:'3660227002798', pv:8.28  },
+  { code:'7073383', designation:'BRIQUE REFRACT 5X5X22 ROUGE (X296)',                        ean:'3700227926769', pv:1.53  },
+  { code:'7074479', designation:'POTEAU 4 PLAQUES INTER 12X12X250 GRIS',                     ean:'3700227944794', pv:29.7  },
+  { code:'7073085', designation:'BIG BAG 1T MARBRE BLANC CARRARE 12/18',                     ean:'3700058803567', pv:229   },
+  { code:'S25GNE',  designation:'SAC 25KG MARBRE ROULE NOIR 15/25',                          ean:'3760095550602', pv:9.95  },
+  { code:'40321',   designation:'DALLE AUTOPORTANTE PERFOREE 39X39X4 MARRON',                ean:'3760168465208', pv:3.9   },
+  { code:'50037',   designation:'BORDURE DROITE ECOLAT BRUN 200X19X1',                       ean:'5400541025510', pv:9.56  },
+  { code:'7074700', designation:'PIQUET RECYLAT NOIR H.35CM LOT DE 12',                      ean:'3700227947009', pv:13.9  },
+  { code:'7072903', designation:'MURET CEVENNES 50X11X9 CREME',                              ean:'3660227051734', pv:7.31  },
+];
+
 let dvLignes = [];
 let editingDevisId = null;
 
@@ -1264,6 +1314,74 @@ function getNextDevisRef() {
   const year = new Date().getFullYear();
   const n = all.filter(d=>d.ref&&d.ref.includes(String(year))).length + 1;
   return `DEV-${year}-${String(n).padStart(3,'0')}`;
+}
+
+function openArticleCatalogue() {
+  document.getElementById('articleSearchInput').value = '';
+  renderArticleList(CATALOGUE_ARTICLES);
+  document.getElementById('modal-catalogue-articles').style.display = 'flex';
+}
+
+function filterArticles(q) {
+  if(!q.trim()) { renderArticleList(CATALOGUE_ARTICLES); return; }
+  const ql = q.toLowerCase();
+  renderArticleList(CATALOGUE_ARTICLES.filter(a =>
+    a.code.toLowerCase().includes(ql) ||
+    a.designation.toLowerCase().includes(ql) ||
+    a.ean.includes(ql)
+  ));
+}
+
+function renderArticleList(articles) {
+  const el = document.getElementById('articleCatalogueList');
+  if(!articles.length) {
+    el.innerHTML = '<p style="color:var(--gray-text);font-size:13px;text-align:center;padding:16px">Aucun article trouvé</p>';
+    return;
+  }
+  el.innerHTML = articles.map((a,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--gray-border);background:var(--white)" id="art-row-${a.code}-${i}">
+      <input type="checkbox" id="art-chk-${a.code}-${i}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--orange)"
+        onchange="toggleArticleRow(this,'${a.code}',${i})">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--orange)">${a.code}</div>
+        <div style="font-size:12px;color:var(--navy);line-height:1.3">${a.designation}</div>
+        <div style="font-size:11px;color:var(--gray-text)">EAN : ${a.ean}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:14px;font-weight:700;color:var(--navy)">${a.pv.toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
+        <div style="font-size:10px;color:var(--gray-text)">HT / unité</div>
+        <input type="number" id="art-qte-${a.code}-${i}" value="1" min="1" step="1"
+          style="width:60px;padding:4px 6px;font-size:12px;margin-top:4px;display:none;text-align:center"
+          placeholder="Qté">
+      </div>
+    </div>
+  `).join('');
+  el._articles = articles;
+}
+
+function toggleArticleRow(chk, code, i) {
+  const qteInput = document.getElementById(`art-qte-${code}-${i}`);
+  qteInput.style.display = chk.checked ? 'block' : 'none';
+  if(chk.checked) qteInput.focus();
+}
+
+function addSelectedArticles() {
+  const el = document.getElementById('articleCatalogueList');
+  const articles = el._articles || CATALOGUE_ARTICLES;
+  let added = 0;
+  articles.forEach((a, i) => {
+    const chk = document.getElementById(`art-chk-${a.code}-${i}`);
+    if(chk && chk.checked) {
+      const qteInput = document.getElementById(`art-qte-${a.code}-${i}`);
+      const qte = parseFloat(qteInput?.value) || 1;
+      dvLignes.push({ ref: a.code, designation: a.designation, qte, pu: a.pv, unite: 'pce' });
+      added++;
+    }
+  });
+  if(!added) { alert('Cochez au moins un article.'); return; }
+  closeModal('modal-catalogue-articles');
+  renderDvLignes();
+  recalcDv();
 }
 
 function renderDevisList() {
@@ -2101,6 +2219,7 @@ function closeModalEvent(e) {
   if(e.target===document.getElementById('modal-event')) closeModal('modal-event');
   if(e.target===document.getElementById('modal-client')) closeModal('modal-client');
   if(e.target===document.getElementById('modal-contact')) closeModal('modal-contact');
+  if(e.target===document.getElementById('modal-catalogue-articles')) closeModal('modal-catalogue-articles');
 }
 
 // ============ DEMO DATA ============
