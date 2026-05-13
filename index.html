@@ -459,6 +459,9 @@
       <input type="file" id="cr-photo-input" accept="image/*" multiple capture="environment" style="display:none" onchange="handleCRPhotos(this)">
     </label>
   </div>
+
+  <div class="card">
+    <div class="card-title">Informations visite</div>
     <div class="form-group">
       <label>Prise de commande</label>
       <div class="toggle-group">
@@ -2177,357 +2180,276 @@ function renderAdminData() {
 }
 
 function exportExcel() {
-  const { crs, evs, from, to } = getAdminData();
-  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
-  const contacts = loadData('crm_contacts');
+  // Chargement dynamique de JSZip si pas encore présent
+  function doExport() {
+    const { crs, evs, from, to } = getAdminData();
+    const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+    const contacts = loadData('crm_contacts');
+    const devisAll = loadData('crm_devis');
 
-  // ── helpers ──────────────────────────────────────────────────────────────
-  const esc = s => String(s||'')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+    // ── Helpers XML ────────────────────────────────────────────────────────
+    const esc = s => String(s||'')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&apos;').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
 
-  // Shared-strings table
-  const SST = [];
-  const sstIdx = {};
-  function si(v) {
-    const k = String(v||'');
-    if(sstIdx[k] !== undefined) return sstIdx[k];
-    const i = SST.length;
-    SST.push(k); sstIdx[k] = i; return i;
-  }
+    // Shared strings
+    const SST=[]; const sstIdx={};
+    function si(v){ const k=String(v||''); if(sstIdx[k]!==undefined)return sstIdx[k]; const i=SST.length; SST.push(k);sstIdx[k]=i;return i; }
 
-  // Cell builders
-  const col = (n) => { let s=''; while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);} return s; }
-  const cellRef = (r,c) => col(c)+r;
+    // Colonnes Excel (A, B, ... Z, AA, ...)
+    function col(n){ let s=''; while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);} return s; }
+    function ref(r,c){ return col(c)+r; }
 
-  function sCell(r,c,v,sIdx) {          // shared-string cell
-    return `<c r="${cellRef(r,c)}" t="s" s="${sIdx}"><v>${si(v)}</v></c>`;
-  }
-  function nCell(r,c,v,sIdx) {          // number cell
-    const num = parseFloat(v);
-    if(isNaN(num)) return sCell(r,c,v,sIdx);
-    return `<c r="${cellRef(r,c)}" s="${sIdx}"><v>${num}</v></c>`;
-  }
+    // Cellules
+    function sCell(r,c,v,s){ return `<c r="${ref(r,c)}" t="s" s="${s}"><v>${si(v)}</v></c>`; }
+    function nCell(r,c,v,s){ return `<c r="${ref(r,c)}" s="${s}"><v>${parseFloat(v)||0}</v></c>`; }
+    function styleCell(v,s){ return {v,s}; }
 
-  // ── Style definitions (xl/styles.xml) ────────────────────────────────────
-  // Indices: 0=default, 1=hdr-navy, 2=hdr-orange, 3=hdr-green, 4=hdr-purple
-  //          5=row-odd, 6=row-even, 7=title, 8=kpi-val, 9=success, 10=danger, 11=warn
-  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    // ── Styles ─────────────────────────────────────────────────────────────
+    const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="8">
-    <font><sz val="11"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
-    <font><b/><sz val="13"/><name val="Calibri"/><color rgb="FF1A2540"/></font>
-    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF1A2540"/></font>
-    <font><b/><sz val="20"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
-    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF217346"/></font>
-    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFD94040"/></font>
-    <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFE8A20A"/></font>
-  </fonts>
-  <fills count="12">
-    <fill><patternFill patternType="none"/></fill>
-    <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1A2540"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFE8650A"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF217346"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF6366F1"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF6F7F9"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF7F1"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFDF0F0"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF8EC"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF2E3D5C"/></patternFill></fill>
-  </fills>
-  <borders count="3">
-    <border><left/><right/><top/><bottom/><diagonal/></border>
-    <border><left style="thin"><color rgb="FFE2E6EE"/></left><right style="thin"><color rgb="FFE2E6EE"/></right><top style="thin"><color rgb="FFE2E6EE"/></top><bottom style="thin"><color rgb="FFE2E6EE"/></bottom></border>
-    <border><left style="medium"><color rgb="FF1A2540"/></left><right style="medium"><color rgb="FF1A2540"/></right><top style="medium"><color rgb="FF1A2540"/></top><bottom style="medium"><color rgb="FF1A2540"/></bottom></border>
-  </borders>
-  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="14">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="1" fillId="5" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="2" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment horizontal="left" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="8" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="6" fillId="9" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="7" fillId="10" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="1" fillId="11" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>
-  </cellXfs>
+<fonts count="7">
+  <font><sz val="11"/><name val="Calibri"/></font>
+  <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+  <font><b/><sz val="18"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+  <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF1A2540"/></font>
+  <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF217346"/></font>
+  <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFD94040"/></font>
+  <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFE8A20A"/></font>
+</fonts>
+<fills count="11">
+  <fill><patternFill patternType="none"/></fill>
+  <fill><patternFill patternType="gray125"/></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FF1A2540"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FFE8650A"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FF217346"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FF6366F1"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FFF6F7F9"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FFEAF7F1"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FFFDF0F0"/></patternFill></fill>
+  <fill><patternFill patternType="solid"><fgColor rgb="FF2E3D5C"/></patternFill></fill>
+</fills>
+<borders count="2">
+  <border><left/><right/><top/><bottom/><diagonal/></border>
+  <border>
+    <left style="thin"><color rgb="FFD0D7E5"/></left>
+    <right style="thin"><color rgb="FFD0D7E5"/></right>
+    <top style="thin"><color rgb="FFD0D7E5"/></top>
+    <bottom style="thin"><color rgb="FFD0D7E5"/></bottom>
+  </border>
+</borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="14">
+  <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+  <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="1" fillId="4" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="1" fillId="5" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>
+  <xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>
+  <xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment horizontal="left" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="4" fillId="8" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="5" fillId="9" borderId="1" xfId="0" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="6" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="1" fillId="10" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment horizontal="center" vertical="center"/></xf>
+  <xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>
+</cellXfs>
 </styleSheet>`;
 
-  // ── Sheet builder ─────────────────────────────────────────────────────────
-  function buildSheet(name, headers, rows, colWidths, headerStyleIdx, altRows=true) {
-    const ncols = Math.max(colWidths.length, headers.length);
-    const lastCol = col(ncols);
-    const cols = colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" bestFit="1" customWidth="1"/>`).join('');
+    // ── Builder de feuille ─────────────────────────────────────────────────
+    function buildSheet(title, headers, rows, colWidths, hdrStyle) {
+      const ncols = Math.max(headers.length, colWidths.length);
+      const lastCol = col(ncols);
+      const colsXml = colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" bestFit="1" customWidth="1"/>`).join('');
 
-    // On démarre à la row 1 avec freeze sur row 3 (titre=1, en-têtes=2, données=3+)
-    let xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<sheetViews>
-  <sheetView workbookViewId="0">
-    <pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/>
-    <selection pane="bottomLeft" activeCell="A3" sqref="A3"/>
-  </sheetView>
-</sheetViews>
-<sheetFormatPr defaultRowHeight="18"/>
-<cols>${cols}</cols>
+      let xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetViews><sheetView workbookViewId="0">
+  <pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/>
+</sheetView></sheetViews>
+<sheetFormatPr defaultRowHeight="16"/>
+<cols>${colsXml}</cols>
 <sheetData>`;
 
-    // Ligne 1 : titre de l'onglet (grande, fond navy, texte blanc)
-    xml += `<row r="1" ht="32" customHeight="1">`;
-    xml += `<c r="A1" t="s" s="7"><v>${si(name)}</v></c>`;
-    // Cellules vides du reste de la ligne titre avec le même style pour un rendu uniforme
-    for(let c2=2; c2<=ncols; c2++) xml += `<c r="${col(c2)}1" s="7"/>`;
-    xml += `</row>`;
-
-    // Ligne 2 : en-têtes de colonnes
-    xml += `<row r="2" ht="24" customHeight="1">`;
-    headers.forEach((h,i) => { xml += sCell(2, i+1, h, headerStyleIdx); });
-    xml += `</row>`;
-
-    // Lignes de données
-    rows.forEach((row, ri) => {
-      const rn = ri + 3;
-      const baseStyle = altRows ? (ri%2===0 ? 5 : 6) : 6;
-      xml += `<row r="${rn}" ht="18" customHeight="1">`;
-      row.forEach((cell, ci) => {
-        const s = (typeof cell === 'object' && cell !== null) ? cell.s : baseStyle;
-        const v = (typeof cell === 'object' && cell !== null) ? cell.v : cell;
-        if(typeof v === 'number') xml += nCell(rn, ci+1, v, s);
-        else xml += sCell(rn, ci+1, v, s);
-      });
+      // Ligne 1 : titre fusionné (style navy)
+      xml += `<row r="1" ht="30" customHeight="1"><c r="A1" t="s" s="7"><v>${si(title)}</v></c>`;
+      for(let c2=2;c2<=ncols;c2++) xml+=`<c r="${col(c2)}1" s="7"/>`;
       xml += `</row>`;
+
+      // Ligne 2 : en-têtes
+      xml += `<row r="2" ht="20" customHeight="1">`;
+      headers.forEach((h,i)=>{ xml+=sCell(2,i+1,h,hdrStyle); });
+      xml += `</row>`;
+
+      // Données
+      rows.forEach((row,ri)=>{
+        const rn=ri+3;
+        const base=ri%2===0?5:6;
+        xml+=`<row r="${rn}" ht="16">`;
+        row.forEach((cell,ci)=>{
+          const s=(cell&&typeof cell==='object')?cell.s:base;
+          const v=(cell&&typeof cell==='object')?cell.v:cell;
+          if(typeof v==='number') xml+=nCell(rn,ci+1,v,s);
+          else xml+=sCell(rn,ci+1,v??'',s);
+        });
+        xml+=`</row>`;
+      });
+
+      xml+=`</sheetData>`;
+      xml+=`<mergeCells count="1"><mergeCell ref="A1:${lastCol}1"/></mergeCells>`;
+      xml+=`<pageSetup orientation="landscape" fitToPage="1" fitToWidth="1" fitToHeight="0"/>`;
+      xml+=`</worksheet>`;
+      return xml;
+    }
+
+    // ── Données ─────────────────────────────────────────────────────────────
+    const joursOuvres = countJoursOuvres(
+      new Date(from+'T12:00:00'),
+      new Date(to+'T12:00:00') < new Date() ? new Date(to+'T12:00:00') : new Date()
+    );
+
+    // SHEET 1 – SYNTHESE
+    const s1h = ['Commercial','Societe','Visites','Commandes','Taux %','Expos','MEP','Moy V/Jour'];
+    const s1r = [];
+    allUsers.forEach(u=>{
+      const uCrs=crs.filter(c=>c.user===u); if(!uCrs.length)return;
+      const co=COMMERCIAUX['CHAMORIN'].includes(u)?'CHAMORIN':'PENEZ HERMAN';
+      const cmd=uCrs.filter(c=>c.cmd==='oui').length;
+      const expo=uCrs.filter(c=>c.expo==='oui').length;
+      const mep=uCrs.filter(c=>c.mep==='oui').length;
+      const taux=Math.round(cmd/uCrs.length*100);
+      const ratio=joursOuvres>0?parseFloat((uCrs.length/joursOuvres).toFixed(2)):0;
+      s1r.push([
+        styleCell(u,13), styleCell(co,co==='CHAMORIN'?2:4),
+        styleCell(uCrs.length,8), styleCell(cmd,8),
+        styleCell(taux, taux>=60?9:taux>=40?11:10),
+        styleCell(expo,8), styleCell(mep,8),
+        styleCell(ratio, ratio>=2?9:ratio>=1.4?11:10),
+      ]);
     });
 
-    xml += `</sheetData>`;
-    // Merge cells pour la ligne de titre
-    xml += `<mergeCells count="1"><mergeCell ref="A1:${lastCol}1"/></mergeCells>`;
-    xml += `<pageSetup orientation="landscape" fitToPage="1" fitToWidth="1" fitToHeight="0"/>`;
-    xml += `</worksheet>`;
-    return xml;
-  }
-
-  function styleCell(v, s) { return { v, s }; }
-
-  // ── SHEET 1 : Synthèse ────────────────────────────────────────────────────
-  const joursOuvres = countJoursOuvres(new Date(from+'T12:00:00'), new Date(to+'T12:00:00') < new Date() ? new Date(to+'T12:00:00') : new Date());
-
-  const synthHeaders = ['Commercial','Société','Visites','Commandes','Taux cmd %','Expos','MEP','Moy V/Jour'];
-  const synthRows = [];
-  allUsers.forEach(u => {
-    const uCrs = crs.filter(c=>c.user===u);
-    if(!uCrs.length) return;
-    const co   = COMMERCIAUX['CHAMORIN'].includes(u)?'CHAMORIN':'PENEZ HERMAN';
-    const cmd  = uCrs.filter(c=>c.cmd==='oui').length;
-    const expo = uCrs.filter(c=>c.expo==='oui').length;
-    const mep  = uCrs.filter(c=>c.mep==='oui').length;
-    const taux = Math.round(cmd/uCrs.length*100);
-    const ratio= joursOuvres>0 ? parseFloat((uCrs.length/joursOuvres).toFixed(2)) : 0;
-    const tauxStyle = taux>=60 ? 9 : taux>=40 ? 11 : 10;
-    const ratioStyle= ratio>=2 ? 9  : ratio>=1.4? 11 : 10;
-    synthRows.push([
-      styleCell(u, 13),
-      styleCell(co, co==='CHAMORIN'?2:4),
-      styleCell(uCrs.length, 8),
-      styleCell(cmd, 8),
-      styleCell(taux, tauxStyle),
-      styleCell(expo, 8),
-      styleCell(mep, 8),
-      styleCell(ratio, ratioStyle),
-    ]);
-  });
-  const synthXml = buildSheet('SYNTHESE COMMERCIALE - '+from+' au '+to, synthHeaders, synthRows, [20,16,12,14,14,10,10,14], 1);
-
-  // ── SHEET 2 : Comptes Rendus ──────────────────────────────────────────────
-  const crHeaders = ['Date','Commercial','Societe','Client','Type visite','Prise de commande','Presence expo','Mise en place','Commentaire'];
-  const crRows = crs.slice().sort((a,b)=>a.date>b.date?1:-1).map(cr => {
-    const cmdStyle  = cr.cmd==='oui'?9 : cr.cmd==='non'?10 : 6;
-    const expoStyle = cr.expo==='oui'?9 : cr.expo==='non'?10 : 6;
-    const mepStyle  = cr.mep==='oui'?9 : cr.mep==='non'?10 : 6;
-    return [
+    // SHEET 2 – COMPTES RENDUS
+    const s2h=['Date','Commercial','Societe','Client','Type visite','Commande','Expo','MEP','Commentaire'];
+    const s2r=crs.slice().sort((a,b)=>a.date>b.date?1:-1).map(cr=>[
       cr.date, styleCell(cr.user,13), cr.company||'', cr.client||'', cr.type||'',
-      styleCell(cr.cmd||'-', cmdStyle),
-      styleCell(cr.expo||'-', expoStyle),
-      styleCell(cr.mep||'-', mepStyle),
-      cr.comment||''
+      styleCell(cr.cmd||'-', cr.cmd==='oui'?9:cr.cmd==='non'?10:6),
+      styleCell(cr.expo||'-', cr.expo==='oui'?9:cr.expo==='non'?10:6),
+      styleCell(cr.mep||'-',  cr.mep==='oui'?9:cr.mep==='non'?10:6),
+      (cr.comment||'').replace(/\n/g,' '),
+    ]);
+
+    // SHEET 3 – AGENDA RDV
+    const s3h=['Date','Heure','Commercial','Societe','Client - Lieu','Type RDV','Duree (min)'];
+    const s3r=evs.slice().sort((a,b)=>a.date>b.date?1:-1).map(ev=>[
+      ev.date, ev.time||'', styleCell(ev.user,13), ev.company||'', ev.client||'', ev.type||'',
+      typeof ev.duration==='number'?ev.duration:'',
+    ]);
+
+    // SHEET 4 – DEVIS
+    const s4h=['Reference','Client','Commercial','Societe','Date','Statut','Articles','Total HT','TVA %','Total TTC'];
+    const s4r=devisAll.sort((a,b)=>a.date>b.date?1:-1).map(dv=>{
+      const ht=(dv.lignes||[]).reduce((s,l)=>s+l.qte*l.pu,0);
+      const ttc=ht*(1+(dv.tva||20)/100);
+      return [
+        styleCell(dv.ref||'',13), dv.client||'', styleCell(dv.commercial||'',13), dv.company||'',
+        dv.date||'',
+        styleCell(dv.statut||'Brouillon', dv.statut==='Envoye'?9:11),
+        (dv.lignes||[]).length, parseFloat(ht.toFixed(2)), dv.tva||20, parseFloat(ttc.toFixed(2)),
+      ];
+    });
+
+    // SHEET 5 – CONTACTS
+    const s5h=['Client','Prenom','Nom','Fonction','Email','Telephone'];
+    const s5r=contacts.slice().sort((a,b)=>a.client>b.client?1:-1).map(c=>[
+      styleCell(c.client,13), c.prenom||'', c.nom||'', c.fonction||'', c.email||'', c.tel||'',
+    ]);
+
+    // SHEET 6 – CATALOGUE
+    const s6h=['Code','Designation','EAN','Prix HT (EUR)'];
+    const s6r=CATALOGUE_ARTICLES.map(a=>[styleCell(a.code,13), a.designation, a.ean, a.pv]);
+
+    const periodLabel = `Periode ${from} au ${to}`;
+    const sheets = [
+      { name:'Synthese',       xml: buildSheet('SYNTHESE COMMERCIALE - '+periodLabel, s1h, s1r, [20,16,11,13,13,10,10,13], 1) },
+      { name:'Comptes Rendus', xml: buildSheet('COMPTES RENDUS - '+periodLabel,       s2h, s2r, [13,14,16,22,18,13,13,13,45], 2) },
+      { name:'Agenda RDV',     xml: buildSheet('AGENDA ET RDV - '+periodLabel,         s3h, s3r, [13,10,14,16,24,20,12],      3) },
+      { name:'Devis',          xml: buildSheet('DEVIS',                                s4h, s4r, [16,24,14,16,13,13,11,13,10,13], 12) },
+      { name:'Contacts',       xml: buildSheet('CONTACTS CLIENTS',                     s5h, s5r, [28,14,16,22,30,16],          4) },
+      { name:'Catalogue',      xml: buildSheet('CATALOGUE ARTICLES',                   s6h, s6r, [13,55,18,14],                12) },
     ];
-  });
-  const crXml = buildSheet('COMPTES RENDUS - '+from+' au '+to, crHeaders, crRows, [13,14,16,22,18,16,16,14,45], 2);
 
-  // ── SHEET 3 : Agenda / RDV ────────────────────────────────────────────────
-  const evHeaders = ['Date','Heure','Commercial','Societe','Client - Lieu','Type RDV','Duree (min)'];
-  const evRows = evs.slice().sort((a,b)=>a.date>b.date?1:-1).map(ev => [
-    ev.date, ev.time||'', styleCell(ev.user,13), ev.company||'', ev.client||'', ev.type||'',
-    typeof ev.duration==='number' ? ev.duration : ''
-  ]);
-  const evXml = buildSheet('AGENDA ET RDV - '+from+' au '+to, evHeaders, evRows, [13,10,14,16,24,20,13], 3);
-
-  // ── SHEET 4 : Devis ───────────────────────────────────────────────────────
-  const devisAll = loadData('crm_devis');
-  const dvHeaders = ['Reference','Client','Commercial','Societe','Date','Statut','Nb articles','Total HT (EUR)','TVA (%)','Total TTC (EUR)'];
-  const dvRows = devisAll.sort((a,b)=>a.date>b.date?1:-1).map(dv => {
-    const ht  = (dv.lignes||[]).reduce((s,l)=>s+l.qte*l.pu, 0);
-    const ttc = ht * (1+(dv.tva||20)/100);
-    const statStyle = dv.statut==='Envoye'?9 : dv.statut==='Brouillon'?11 : 8;
-    return [
-      styleCell(dv.ref||'', 13), dv.client||'', styleCell(dv.commercial||'',13),
-      dv.company||'', dv.date||'',
-      styleCell(dv.statut||'Brouillon', statStyle),
-      (dv.lignes||[]).length,
-      parseFloat(ht.toFixed(2)),
-      dv.tva||20,
-      parseFloat(ttc.toFixed(2)),
-    ];
-  });
-  const dvXml = buildSheet('DEVIS', dvHeaders, dvRows, [16,24,14,16,13,12,12,14,10,14], 12);
-
-  // ── SHEET 5 : Contacts ────────────────────────────────────────────────────
-  const cntHeaders = ['Client','Prenom','Nom','Fonction','Email','Telephone'];
-  const cntRows = contacts.slice().sort((a,b)=>a.client>b.client?1:-1).map(c=>[
-    styleCell(c.client,13), c.prenom||'', c.nom||'', c.fonction||'', c.email||'', c.tel||''
-  ]);
-  const cntXml = buildSheet('CONTACTS CLIENTS', cntHeaders, cntRows, [28,14,16,22,30,16], 4);
-
-  // ── SHEET 6 : Catalogue ───────────────────────────────────────────────────
-  const catHeaders = ['Code','Designation','EAN','Prix HT (EUR)'];
-  const catRows = CATALOGUE_ARTICLES.map(a=>[
-    styleCell(a.code,13), a.designation, a.ean, typeof a.pv==='number'?a.pv:''
-  ]);
-  const catXml = buildSheet('CATALOGUE ARTICLES', catHeaders, catRows, [12,55,18,14], 12);
-
-  // ── Workbook assembly ─────────────────────────────────────────────────────
-  const sheets = [
-    { name:'Synthese',        xml: synthXml },
-    { name:'Comptes Rendus',  xml: crXml    },
-    { name:'Agenda RDV',      xml: evXml    },
-    { name:'Devis',           xml: dvXml    },
-    { name:'Contacts',        xml: cntXml   },
-    { name:'Catalogue',       xml: catXml   },
-  ];
-
-  const wbXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<sheets>${sheets.map((s,i)=>`<sheet name="${esc(s.name)}" sheetId="${i+1}" r:id="rId${i+2}"/>`).join('')}</sheets>
-</workbook>`;
-
-  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-${sheets.map((s,i)=>`<Relationship Id="rId${i+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('\n')}
-</Relationships>`;
-
-  const sstXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    // ── SST final (doit être construit APRES toutes les cellules) ──────────
+    const sstXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${SST.length}" uniqueCount="${SST.length}">
-${SST.map(s=>`<si><t xml:space="preserve">${esc(s)}</t></si>`).join('')}
+${SST.map(s=>`<si><t xml:space="preserve">${esc(s)}</t></si>`).join('\n')}
 </sst>`;
 
-  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    // ── Workbook XML ────────────────────────────────────────────────────────
+    const wbXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>
+${sheets.map((s,i)=>`<sheet name="${esc(s.name)}" sheetId="${i+1}" r:id="rId${i+2}"/>`).join('\n')}
+</sheets>
+</workbook>`;
+
+    const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
+${sheets.map((s,i)=>`<Relationship Id="rId${i+3}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('\n')}
+</Relationships>`;
+
+    const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>`;
 
-  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
 <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml"  ContentType="application/xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
 <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('\n')}
 <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
 <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('\n')}
 </Types>`;
 
-  // ── ZIP builder (maison, pas de dépendance) ───────────────────────────────
-  // On utilise une implémentation ZIP minimale en JS pur
-  function strToBytes(s) {
-    const encoder = new TextEncoder();
-    return encoder.encode(s);
+    // ── ZIP via JSZip ───────────────────────────────────────────────────────
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypes);
+    zip.folder('_rels').file('.rels', rootRels);
+    const xl = zip.folder('xl');
+    xl.file('workbook.xml', wbXml);
+    xl.file('styles.xml', stylesXml);
+    xl.file('sharedStrings.xml', sstXml);
+    xl.folder('_rels').file('workbook.xml.rels', wbRels);
+    const ws = xl.folder('worksheets');
+    sheets.forEach((s,i) => ws.file(`sheet${i+1}.xml`, s.xml));
+
+    zip.generateAsync({ type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `CRM_Export_${from}_${to}.xlsx`;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
   }
 
-  function crc32(data) {
-    let crc = 0xFFFFFFFF;
-    const table = new Uint32Array(256);
-    for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?(0xEDB88320^(c>>>1)):c>>>1;table[i]=c;}
-    for(let i=0;i<data.length;i++) crc=table[(crc^data[i])&0xFF]^(crc>>>8);
-    return (crc^0xFFFFFFFF)>>>0;
+  // Charger JSZip dynamiquement si absent
+  if(typeof JSZip === 'undefined') {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    sc.onload = doExport;
+    sc.onerror = () => alert('Impossible de charger JSZip. Vérifiez votre connexion internet.');
+    document.head.appendChild(sc);
+  } else {
+    doExport();
   }
-
-  function u16le(n){const b=new Uint8Array(2);b[0]=n&0xFF;b[1]=(n>>8)&0xFF;return b;}
-  function u32le(n){const b=new Uint8Array(4);b[0]=n&0xFF;b[1]=(n>>8)&0xFF;b[2]=(n>>16)&0xFF;b[3]=(n>>24)&0xFF;return b;}
-
-  function concat(...arrs) {
-    const total = arrs.reduce((s,a)=>s+a.length,0);
-    const out = new Uint8Array(total); let off=0;
-    arrs.forEach(a=>{out.set(a,off);off+=a.length;});
-    return out;
-  }
-
-  const files = [
-    { name:'[Content_Types].xml',           data: strToBytes(contentTypes) },
-    { name:'_rels/.rels',                   data: strToBytes(rootRels)     },
-    { name:'xl/workbook.xml',               data: strToBytes(wbXml)        },
-    { name:'xl/_rels/workbook.xml.rels',    data: strToBytes(wbRels)       },
-    { name:'xl/sharedStrings.xml',          data: strToBytes(sstXml)       },
-    { name:'xl/styles.xml',                 data: strToBytes(stylesXml)    },
-    ...sheets.map((s,i)=>({ name:`xl/worksheets/sheet${i+1}.xml`, data: strToBytes(s.xml) }))
-  ];
-
-  const localHeaders = [];
-  const centralDirs  = [];
-  let offset = 0;
-
-  files.forEach(f => {
-    const nameBytes = strToBytes(f.name);
-    const crc       = crc32(f.data);
-    const size      = f.data.length;
-    const lh = concat(
-      new Uint8Array([0x50,0x4B,0x03,0x04]),   // sig
-      u16le(20), u16le(0), u16le(0),            // version, flags, method (stored)
-      u16le(0), u16le(0),                       // mod time/date
-      u32le(crc), u32le(size), u32le(size),     // crc, compressed, uncompressed
-      u16le(nameBytes.length), u16le(0),        // name len, extra len
-      nameBytes, f.data
-    );
-    const cd = concat(
-      new Uint8Array([0x50,0x4B,0x01,0x02]),   // sig
-      u16le(20), u16le(20), u16le(0), u16le(0),// versions, flags, method
-      u16le(0), u16le(0),                       // mod time/date
-      u32le(crc), u32le(size), u32le(size),     // crc, sizes
-      u16le(nameBytes.length), u16le(0), u16le(0), u16le(0), // name/extra/comment len
-      u16le(0), u32le(0), u32le(offset),        // disk, attrs, offset
-      nameBytes
-    );
-    localHeaders.push(lh);
-    centralDirs.push(cd);
-    offset += lh.length;
-  });
-
-  const cdSize   = centralDirs.reduce((s,c)=>s+c.length,0);
-  const eocdr = concat(
-    new Uint8Array([0x50,0x4B,0x05,0x06]), u16le(0), u16le(0),
-    u16le(files.length), u16le(files.length),
-    u32le(cdSize), u32le(offset), u16le(0)
-  );
-
-  const zipBytes = concat(...localHeaders, ...centralDirs, eocdr);
-  const blob = new Blob([zipBytes], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `CRM_Export_${from}_${to}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 function exportPDFStats() {
