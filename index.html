@@ -331,6 +331,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       <span class="sidebar-label">Catalogue</span>
     </button>
+    <button class="sidebar-item" onclick="switchTab('admin')" id="snav-admin">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="sidebar-label">Administration</span>
+    </button>
   </nav>
   <div class="sidebar-footer">
     <div class="version">CRM v2.0 · Maquette</div>
@@ -445,7 +449,16 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Informations visite</div>
+    <div class="card-title">Photos de la visite</div>
+    <div id="cr-photos-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
+    <label for="cr-photo-input" style="cursor:pointer">
+      <div style="border:1.5px dashed var(--gray-border);border-radius:var(--radius-sm);padding:14px;text-align:center;background:var(--gray-bg);color:var(--gray-text);font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Ajouter des photos
+      </div>
+      <input type="file" id="cr-photo-input" accept="image/*" multiple capture="environment" style="display:none" onchange="handleCRPhotos(this)">
+    </label>
+  </div>
     <div class="form-group">
       <label>Prise de commande</label>
       <div class="toggle-group">
@@ -697,6 +710,70 @@
   </div>
 </div>
 
+<!-- SCREEN: ADMINISTRATION -->
+<div class="screen" id="screen-admin">
+  <h2 class="page-title">Administration</h2>
+  <p class="page-sub">Exports & rapports de performance</p>
+
+  <!-- PÉRIODE -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Période d'analyse</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><label>De</label><input type="date" id="admin-date-from"></div>
+      <div><label>À</label><input type="date" id="admin-date-to"></div>
+    </div>
+    <div class="company-tabs" style="margin-bottom:0">
+      <button class="company-tab active" id="admin-period-mois"   onclick="setAdminPeriod('mois',this)">Ce mois</button>
+      <button class="company-tab"        id="admin-period-trim"   onclick="setAdminPeriod('trimestre',this)">Trimestre</button>
+      <button class="company-tab"        id="admin-period-annee"  onclick="setAdminPeriod('annee',this)">Année</button>
+      <button class="company-tab"        id="admin-period-custom" onclick="setAdminPeriod('custom',this)">Perso</button>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div id="admin-kpi-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px"></div>
+
+  <!-- EXPORT EXCEL -->
+  <div style="background:linear-gradient(135deg,#1A2540 0%,#2E3D5C 100%);border-radius:var(--radius);padding:20px;margin-bottom:12px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(232,101,10,0.15)"></div>
+    <div style="position:absolute;bottom:-30px;left:60px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.04)"></div>
+    <div style="display:flex;align-items:flex-start;gap:14px;position:relative">
+      <div style="width:48px;height:48px;border-radius:12px;background:#217346;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px">📊</div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:white;margin-bottom:4px">Export Excel</div>
+        <div style="font-size:12px;color:#8BA0BE;line-height:1.5;margin-bottom:14px">Tous les comptes rendus, RDV et données commerciales dans un fichier Excel formaté avec onglets par commercial.</div>
+        <button onclick="exportExcel()" style="background:#217346;color:white;border:none;border-radius:var(--radius-sm);padding:10px 20px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Télécharger Excel (.xlsx)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT PDF STATS -->
+  <div style="background:linear-gradient(135deg,#E8650A 0%,#C25008 100%);border-radius:var(--radius);padding:20px;margin-bottom:12px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-20px;right:-10px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
+    <div style="position:absolute;bottom:-20px;right:60px;width:70px;height:70px;border-radius:50%;background:rgba(0,0,0,0.08)"></div>
+    <div style="display:flex;align-items:flex-start;gap:14px;position:relative">
+      <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px">📄</div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:white;margin-bottom:4px">Rapport PDF Mensuel</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:14px">Rapport de performance complet avec KPIs, graphiques visuels, classement des commerciaux et analyse par enseigne.</div>
+        <button onclick="exportPDFStats()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);border-radius:var(--radius-sm);padding:10px 20px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Générer rapport PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLEAU RECAP PAR COMMERCIAL -->
+  <div class="card">
+    <div class="card-title">Synthèse par commercial</div>
+    <div id="admin-tableau" style="overflow-x:auto"></div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="nav-item active" onclick="switchTab('agenda')" id="nav-agenda">
@@ -737,6 +814,11 @@
   <button class="nav-item" onclick="switchTab('catalogue')" id="nav-catalogue">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     Catalogue
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchTab('admin')" id="nav-admin">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Admin
     <div class="nav-dot"></div>
   </button>
 </nav>
@@ -948,6 +1030,7 @@ function switchTab(name) {
   if(name==='stats')    renderStats();
   if(name==='contact')  renderContactList();
   if(name==='devis')    renderDevisList();
+  if(name==='admin')    initAdmin();
   closeSidebar();
 }
 
@@ -1353,6 +1436,7 @@ function saveCR() {
     user: currentUser, company: currentCompany,
     client, date, type, comment,
     interlocuteurId,
+    photos: crPhotos.map(p=>p.data),
     cmd: crToggles.cmd, expo: crToggles.expo, mep: crToggles.mep,
     createdAt: new Date().toISOString()
   };
@@ -1371,6 +1455,9 @@ function saveCR() {
   document.getElementById('cr-cnt-nom').value = '';
   document.getElementById('cr-cnt-fonction').value = '';
   document.getElementById('cr-cnt-email').value = '';
+  crPhotos = [];
+  renderCRPhotosPreview();
+  document.getElementById('cr-photo-input').value = '';
   crToggles = { cmd:null, expo:null, mep:null };
   document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
   alert('✓ Compte rendu enregistré !');
@@ -1940,6 +2027,345 @@ ${soc.email}`);
 
   alert('✓ Devis marqué comme Envoyé.\nLe devis s\'ouvre pour impression/PDF.\nVotre client mail s\'ouvrira dans un instant.');
   cancelDevisForm();
+}
+
+// ============ PHOTOS CR ============
+let crPhotos = []; // base64 array
+
+function handleCRPhotos(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    if(!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      crPhotos.push({ data: e.target.result, name: file.name });
+      renderCRPhotosPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderCRPhotosPreview() {
+  const el = document.getElementById('cr-photos-preview');
+  el.innerHTML = crPhotos.map((p,i) => `
+    <div style="position:relative;width:80px;height:80px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--gray-border)">
+      <img src="${p.data}" style="width:100%;height:100%;object-fit:cover">
+      <button onclick="removeCRPhoto(${i})" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.6);color:white;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeCRPhoto(i) {
+  crPhotos.splice(i,1);
+  renderCRPhotosPreview();
+}
+
+// ============ ADMINISTRATION ============
+let adminPeriodMode = 'mois';
+
+function setAdminPeriod(mode, btn) {
+  adminPeriodMode = mode;
+  document.querySelectorAll('#screen-admin .company-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  if(mode==='mois') {
+    document.getElementById('admin-date-from').value = `${y}-${String(m+1).padStart(2,'0')}-01`;
+    document.getElementById('admin-date-to').value   = formatDate(new Date(y,m+1,0));
+  } else if(mode==='trimestre') {
+    const q = Math.floor(m/3);
+    document.getElementById('admin-date-from').value = `${y}-${String(q*3+1).padStart(2,'0')}-01`;
+    document.getElementById('admin-date-to').value   = formatDate(new Date(y,q*3+3,0));
+  } else if(mode==='annee') {
+    document.getElementById('admin-date-from').value = `${y}-01-01`;
+    document.getElementById('admin-date-to').value   = `${y}-12-31`;
+  }
+  if(mode!=='custom') renderAdminData();
+}
+
+function initAdmin() {
+  setAdminPeriod(adminPeriodMode, document.getElementById('admin-period-'+
+    (adminPeriodMode==='mois'?'mois':adminPeriodMode==='trimestre'?'trim':adminPeriodMode==='annee'?'annee':'custom')));
+}
+
+function getAdminData() {
+  const from = document.getElementById('admin-date-from').value;
+  const to   = document.getElementById('admin-date-to').value;
+  const crs  = loadData('crm_crs').filter(c => c.date >= from && c.date <= to);
+  const evs  = loadData('crm_events').filter(e => e.date >= from && e.date <= to);
+  return { crs, evs, from, to };
+}
+
+function renderAdminData() {
+  const { crs, evs } = getAdminData();
+  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+  const clients  = new Set(crs.map(c=>c.client)).size;
+  const cmds     = crs.filter(c=>c.cmd==='oui').length;
+  const fromD = new Date(document.getElementById('admin-date-from').value+'T12:00:00');
+  const toD   = new Date(document.getElementById('admin-date-to').value+'T12:00:00');
+  const joursOuvres = countJoursOuvres(fromD, toD < new Date() ? toD : new Date());
+  const tauxCmd = crs.length ? Math.round(cmds/crs.length*100) : 0;
+  const ratioJour = joursOuvres > 0 ? (crs.length/joursOuvres).toFixed(2) : '—';
+
+  // KPI cards
+  const kpis = [
+    { label:'Visites totales',      val: crs.length,  color:'#1A2540', icon:'📍' },
+    { label:'Clients visités',      val: clients,     color:'#6366F1', icon:'🏪' },
+    { label:'Commandes passées',    val: cmds,        color:'#217346', icon:'🛒' },
+    { label:'Taux de commande',     val: tauxCmd+'%', color:'#E8650A', icon:'📈' },
+    { label:'RDV agenda',           val: evs.length,  color:'#0EA5E9', icon:'📅' },
+    { label:'Jours ouvrés',         val: joursOuvres, color:'#8B5CF6', icon:'📆' },
+    { label:'Moy. visites/jour',    val: ratioJour,   color:'#E8A20A', icon:'⚡' },
+    { label:'Expos en place',       val: crs.filter(c=>c.expo==='oui').length, color:'#2D9E6B', icon:'🖼️' },
+  ];
+  document.getElementById('admin-kpi-grid').innerHTML = kpis.map(k=>`
+    <div style="background:white;border-radius:var(--radius);border:1px solid var(--gray-border);padding:14px;box-shadow:0 2px 8px rgba(26,37,64,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">${k.label}</div>
+          <div style="font-size:26px;font-weight:800;color:${k.color}">${k.val}</div>
+        </div>
+        <span style="font-size:22px">${k.icon}</span>
+      </div>
+    </div>
+  `).join('');
+
+  // Tableau synthèse
+  const rows = allUsers.map(u => {
+    const uCrs = crs.filter(c=>c.user===u);
+    if(!uCrs.length) return null;
+    const co = COMMERCIAUX['CHAMORIN'].includes(u)?'CHAMORIN':'PENEZ HERMAN';
+    const cmd = uCrs.filter(c=>c.cmd==='oui').length;
+    const expo= uCrs.filter(c=>c.expo==='oui').length;
+    const mep = uCrs.filter(c=>c.mep==='oui').length;
+    const taux= Math.round(cmd/uCrs.length*100);
+    const ratio= joursOuvres>0 ? (uCrs.length/joursOuvres).toFixed(2) : '—';
+    return { u, co, n: uCrs.length, cmd, expo, mep, taux, ratio };
+  }).filter(Boolean).sort((a,b)=>b.n-a.n);
+
+  let tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px">
+    <thead>
+      <tr style="background:var(--navy)">
+        <th style="padding:10px 12px;color:white;font-weight:700;text-align:left;border-radius:var(--radius-sm) 0 0 0">Commercial</th>
+        <th style="padding:10px 8px;color:white;font-weight:700;text-align:center">Société</th>
+        <th style="padding:10px 8px;color:white;font-weight:700;text-align:center">Visites</th>
+        <th style="padding:10px 8px;color:white;font-weight:700;text-align:center">Commandes</th>
+        <th style="padding:10px 8px;color:white;font-weight:700;text-align:center">Taux</th>
+        <th style="padding:10px 8px;color:white;font-weight:700;text-align:center">Expos</th>
+        <th style="padding:10px 8px;color:white;font-weight:700;text-align:center">MEP</th>
+        <th style="padding:10px 12px;color:white;font-weight:700;text-align:center;border-radius:0 var(--radius-sm) 0 0">V/Jour</th>
+      </tr>
+    </thead><tbody>`;
+  rows.forEach((r,i) => {
+    const bg = i%2===0 ? '#fff' : '#F6F7F9';
+    const tauxColor = r.taux>=60?'#217346':r.taux>=40?'#E8A20A':'#D94040';
+    tableHtml += `<tr style="background:${bg}">
+      <td style="padding:9px 12px;font-weight:700;color:var(--navy)">${r.u}</td>
+      <td style="padding:9px 8px;text-align:center"><span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:50px;background:${r.co==='CHAMORIN'?'var(--orange-light)':'#EEF2FF'};color:${r.co==='CHAMORIN'?'var(--orange)':'#6366F1'}">${r.co==='CHAMORIN'?'CHAM':'PH'}</span></td>
+      <td style="padding:9px 8px;text-align:center;font-weight:700">${r.n}</td>
+      <td style="padding:9px 8px;text-align:center">${r.cmd}</td>
+      <td style="padding:9px 8px;text-align:center;font-weight:700;color:${tauxColor}">${r.taux}%</td>
+      <td style="padding:9px 8px;text-align:center">${r.expo}</td>
+      <td style="padding:9px 8px;text-align:center">${r.mep}</td>
+      <td style="padding:9px 12px;text-align:center;font-weight:700;color:${parseFloat(r.ratio)>=2?'#217346':parseFloat(r.ratio)>=1.4?'#E8A20A':'#D94040'}">${r.ratio}</td>
+    </tr>`;
+  });
+  if(!rows.length) tableHtml += `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--gray-text)">Aucune donnée sur cette période</td></tr>`;
+  tableHtml += '</tbody></table>';
+  document.getElementById('admin-tableau').innerHTML = tableHtml;
+}
+
+function exportExcel() {
+  const { crs, evs, from, to } = getAdminData();
+  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+  const contacts = loadData('crm_contacts');
+
+  // Construire CSV multi-onglets simulé → on crée un seul CSV avec séparateurs clairs
+  let csvContent = '\uFEFF'; // BOM UTF-8
+
+  // ONGLET 1 : COMPTES RENDUS
+  csvContent += '=== COMPTES RENDUS ===\n';
+  csvContent += 'Date;Commercial;Société;Client;Type;Prise de commande;Présence expo;Mise en place;Commentaire\n';
+  crs.sort((a,b)=>a.date>b.date?1:-1).forEach(cr => {
+    const comment = (cr.comment||'').replace(/;/g,',').replace(/\n/g,' ');
+    csvContent += `${cr.date};${cr.user};${cr.company};${cr.client};${cr.type||''};${cr.cmd||''};${cr.expo||''};${cr.mep||''};${comment}\n`;
+  });
+
+  csvContent += '\n=== AGENDA / RDV ===\n';
+  csvContent += 'Date;Heure;Commercial;Société;Client;Type;Durée (min)\n';
+  evs.sort((a,b)=>a.date>b.date?1:-1).forEach(ev => {
+    csvContent += `${ev.date};${ev.time};${ev.user};${ev.company};${ev.client};${ev.type};${ev.duration}\n`;
+  });
+
+  csvContent += '\n=== SYNTHÈSE PAR COMMERCIAL ===\n';
+  csvContent += 'Commercial;Société;Nb visites;Commandes;Taux commande (%);Expos;MEP\n';
+  allUsers.forEach(u => {
+    const uCrs = crs.filter(c=>c.user===u);
+    if(!uCrs.length) return;
+    const co = COMMERCIAUX['CHAMORIN'].includes(u)?'CHAMORIN':'PENEZ HERMAN';
+    const cmd = uCrs.filter(c=>c.cmd==='oui').length;
+    const expo= uCrs.filter(c=>c.expo==='oui').length;
+    const mep = uCrs.filter(c=>c.mep==='oui').length;
+    const taux= Math.round(cmd/uCrs.length*100);
+    csvContent += `${u};${co};${uCrs.length};${cmd};${taux};${expo};${mep}\n`;
+  });
+
+  csvContent += '\n=== CONTACTS ===\n';
+  csvContent += 'Client;Prénom;Nom;Fonction;Email;Téléphone\n';
+  contacts.forEach(c => {
+    csvContent += `${c.client};${c.prenom||''};${c.nom||''};${c.fonction||''};${c.email||''};${c.tel||''}\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `CRM_Export_${from}_${to}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert('✓ Export téléchargé !\nOuvrez le fichier dans Excel (Données → À partir d\'un fichier CSV, séparateur : point-virgule).');
+}
+
+function exportPDFStats() {
+  const { crs, evs, from, to } = getAdminData();
+  const allUsers = [...COMMERCIAUX['CHAMORIN'], ...COMMERCIAUX['PENEZ HERMAN']];
+  const fromLabel = new Date(from+'T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const joursOuvres = countJoursOuvres(new Date(from+'T12:00:00'), new Date(to+'T12:00:00') < new Date() ? new Date(to+'T12:00:00') : new Date());
+
+  const rows = allUsers.map(u => {
+    const uCrs = crs.filter(c=>c.user===u);
+    if(!uCrs.length) return null;
+    const co  = COMMERCIAUX['CHAMORIN'].includes(u)?'CHAMORIN':'PENEZ HERMAN';
+    const cmd = uCrs.filter(c=>c.cmd==='oui').length;
+    const expo= uCrs.filter(c=>c.expo==='oui').length;
+    const mep = uCrs.filter(c=>c.mep==='oui').length;
+    const taux= Math.round(cmd/uCrs.length*100);
+    const ratio= joursOuvres>0?(uCrs.length/joursOuvres).toFixed(2):'—';
+    return { u, co, n: uCrs.length, cmd, expo, mep, taux, ratio };
+  }).filter(Boolean).sort((a,b)=>b.n-a.n);
+
+  const maxN = rows[0]?.n || 1;
+  const totalVisites = crs.length;
+  const totalCmds    = crs.filter(c=>c.cmd==='oui').length;
+  const totalClients = new Set(crs.map(c=>c.client)).size;
+  const tauxGlobal   = totalVisites ? Math.round(totalCmds/totalVisites*100) : 0;
+
+  // Types
+  const byType = {};
+  crs.forEach(c=>{ byType[c.type]=(byType[c.type]||0)+1; });
+  const typesHtml = Object.entries(byType).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t,n])=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="font-size:12px;color:#6B7A99;width:160px;flex-shrink:0;text-align:right">${t}</div>
+      <div style="flex:1;background:#F0F2F5;border-radius:4px;height:10px;overflow:hidden">
+        <div style="width:${Math.round(n/maxN*100)}%;height:100%;background:#E8650A;border-radius:4px"></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:#1A2540;width:24px">${n}</div>
+    </div>`).join('');
+
+  const rowsHtml = rows.map((r,i) => {
+    const tcol = r.taux>=60?'#217346':r.taux>=40?'#E8A20A':'#D94040';
+    const rcol = parseFloat(r.ratio)>=2?'#217346':parseFloat(r.ratio)>=1.4?'#E8A20A':'#D94040';
+    const bar  = Math.round(r.n/maxN*100);
+    return `<tr style="background:${i%2===0?'#fff':'#F8F9FB'}">
+      <td style="padding:10px 14px">
+        <div style="font-weight:700;color:#1A2540">${r.u}</div>
+        <div style="font-size:10px;color:#6B7A99">${r.co}</div>
+      </td>
+      <td style="padding:10px 8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:${bar}%;max-width:120px;height:8px;background:#E8650A;border-radius:4px;min-width:4px"></div>
+          <span style="font-weight:800;font-size:16px;color:#1A2540">${r.n}</span>
+        </div>
+      </td>
+      <td style="padding:10px 8px;text-align:center;font-weight:700;font-size:15px;color:${tcol}">${r.taux}%</td>
+      <td style="padding:10px 8px;text-align:center">${r.cmd}</td>
+      <td style="padding:10px 8px;text-align:center">${r.expo}</td>
+      <td style="padding:10px 8px;text-align:center">${r.mep}</td>
+      <td style="padding:10px 14px;text-align:center;font-weight:700;color:${rcol}">${r.ratio}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Rapport CRM ${fromLabel}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=DM+Serif+Display&display=swap');
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body { font-family:'DM Sans',Arial,sans-serif; background:#F0F2F5; color:#1A2540; }
+  .page { max-width:900px; margin:0 auto; padding:40px; }
+  /* HERO */
+  .hero { background:linear-gradient(135deg,#1A2540 0%,#2E3D5C 60%,#E8650A 140%); border-radius:16px; padding:36px 40px; margin-bottom:28px; position:relative; overflow:hidden; }
+  .hero::before { content:''; position:absolute; top:-40px; right:-40px; width:200px; height:200px; border-radius:50%; background:rgba(232,101,10,0.15); }
+  .hero::after  { content:''; position:absolute; bottom:-30px; left:100px; width:150px; height:150px; border-radius:50%; background:rgba(255,255,255,0.04); }
+  .hero-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#F4A460; margin-bottom:10px; }
+  .hero-title { font-family:'DM Serif Display',serif; font-size:32px; color:white; margin-bottom:6px; }
+  .hero-period { font-size:14px; color:rgba(255,255,255,0.65); }
+  .hero-date { font-size:11px; color:rgba(255,255,255,0.4); margin-top:20px; }
+  /* KPI ROW */
+  .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
+  .kpi-card { background:white; border-radius:12px; padding:18px; border-bottom:4px solid transparent; }
+  .kpi-card.orange { border-color:#E8650A; }
+  .kpi-card.green  { border-color:#217346; }
+  .kpi-card.blue   { border-color:#6366F1; }
+  .kpi-card.amber  { border-color:#E8A20A; }
+  .kpi-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#6B7A99; margin-bottom:8px; }
+  .kpi-val   { font-size:32px; font-weight:800; color:#1A2540; line-height:1; }
+  .kpi-sub   { font-size:11px; color:#6B7A99; margin-top:4px; }
+  /* SECTIONS */
+  .section { background:white; border-radius:12px; padding:24px; margin-bottom:20px; }
+  .section-title { font-size:14px; font-weight:800; color:#1A2540; margin-bottom:18px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:''; display:inline-block; width:4px; height:18px; background:#E8650A; border-radius:2px; }
+  table { width:100%; border-collapse:collapse; }
+  thead th { background:#1A2540; color:white; padding:10px 14px; font-size:11px; font-weight:700; text-align:left; text-transform:uppercase; letter-spacing:0.5px; }
+  thead th:last-child { border-radius:0 6px 6px 0; }
+  thead th:first-child { border-radius:6px 0 0 6px; }
+  .footer { text-align:center; padding:20px; color:#9DB4CC; font-size:11px; }
+  @media print { body { background:white; } .page { padding:20px; } }
+</style></head><body>
+<div class="page">
+  <div class="hero">
+    <div class="hero-label">Chamorin & Penez Herman · Rapport Commercial</div>
+    <div class="hero-title">Tableau de bord performance</div>
+    <div class="hero-period">Période : ${new Date(from+'T12:00:00').toLocaleDateString('fr-FR')} → ${new Date(to+'T12:00:00').toLocaleDateString('fr-FR')}</div>
+    <div class="hero-date">Généré le ${new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card orange"><div class="kpi-label">Visites totales</div><div class="kpi-val">${totalVisites}</div><div class="kpi-sub">comptes rendus</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Clients visités</div><div class="kpi-val">${totalClients}</div><div class="kpi-sub">enseignes</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">Taux commande</div><div class="kpi-val">${tauxGlobal}%</div><div class="kpi-sub">${totalCmds} commandes</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">Moy. visites/jour</div><div class="kpi-val">${joursOuvres>0?(totalVisites/joursOuvres).toFixed(1):'—'}</div><div class="kpi-sub">sur ${joursOuvres} j. ouvrés</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Performance par commercial</div>
+    <table>
+      <thead><tr>
+        <th>Commercial</th><th>Visites</th><th>Taux cmd</th>
+        <th>Commandes</th><th>Expos</th><th>MEP</th><th>V/Jour</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Répartition par type de visite</div>
+    ${typesHtml || '<p style="color:#6B7A99;font-size:13px">Aucune donnée</p>'}
+  </div>
+
+  <div class="footer">Rapport confidentiel · Chamorin & Penez Herman · ${new Date().getFullYear()}</div>
+</div>
+</body></html>`;
+
+  const win = window.open('','_blank');
+  if(!win) { alert('Autorisez les popups pour générer le PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>win.print(), 700);
 }
 
 // ============ CONTACTS ============
