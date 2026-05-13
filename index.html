@@ -458,6 +458,103 @@
   </div>
 </div>
 
+<!-- SCREEN: DEVIS -->
+<div class="screen" id="screen-devis">
+  <h2 class="page-title">Devis</h2>
+  <p class="page-sub" id="devis-user-name">—</p>
+
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button class="company-tab active" id="devis-tab-liste" onclick="setDevisView('liste',this)" style="flex:1">Mes devis</button>
+    <button class="company-tab" id="devis-tab-new" onclick="openNewDevis()" style="flex:1">+ Nouveau</button>
+  </div>
+
+  <div id="devisListView">
+    <div id="devisList"></div>
+  </div>
+
+  <div id="devisFormView" style="display:none">
+    <div class="card">
+      <div class="card-title">Informations client</div>
+      <div class="form-group">
+        <label>Client</label>
+        <input type="text" id="dv-client" placeholder="Nom du client…" list="dvClientSuggestions" oninput="updateDvInterlocSelect()" onchange="updateDvInterlocSelect()">
+        <datalist id="dvClientSuggestions"></datalist>
+      </div>
+      <div class="form-group">
+        <label>Interlocuteur</label>
+        <div style="display:flex;gap:8px">
+          <select id="dv-interlocuteur" style="flex:1">
+            <option value="">— Optionnel —</option>
+          </select>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openDvQuickContact()" style="flex-shrink:0;padding:0 12px">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Adresse de livraison / facturation</label>
+        <textarea id="dv-adresse" placeholder="Adresse du client…" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Référence devis</label>
+        <input type="text" id="dv-ref" placeholder="DEV-2026-001">
+      </div>
+      <div class="form-group">
+        <label>Date du devis</label>
+        <input type="date" id="dv-date">
+      </div>
+      <div class="form-group">
+        <label>Validité (jours)</label>
+        <select id="dv-validite">
+          <option value="15">15 jours</option>
+          <option value="30" selected>30 jours</option>
+          <option value="60">60 jours</option>
+          <option value="90">90 jours</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Articles</div>
+      <div id="dvLignes"></div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="addDvLigne()">+ Ajouter un article</button>
+    </div>
+
+    <div class="card" style="background:var(--navy);border-color:var(--navy)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;color:#9DB4CC">Sous-total HT</span>
+        <span style="font-size:14px;font-weight:600;color:white" id="dv-ht">0,00 €</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;color:#9DB4CC">TVA</span>
+          <select id="dv-tva" onchange="recalcDv()" style="width:80px;padding:4px 6px;font-size:12px;background:var(--navy-mid);color:white;border:1px solid #3E5070;border-radius:6px">
+            <option value="20">20%</option>
+            <option value="10">10%</option>
+            <option value="5.5">5,5%</option>
+            <option value="0">0%</option>
+          </select>
+        </div>
+        <span style="font-size:14px;font-weight:600;color:white" id="dv-tva-montant">0,00 €</span>
+      </div>
+      <div style="border-top:1px solid #3E5070;margin:8px 0;padding-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:15px;font-weight:700;color:white">TOTAL TTC</span>
+        <span style="font-size:20px;font-weight:700;color:var(--orange-mid)" id="dv-ttc">0,00 €</span>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Conditions & remarques</label>
+      <textarea id="dv-remarques" placeholder="Délai de livraison, conditions de paiement, notes…" rows="3"></textarea>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <button class="btn btn-ghost" style="justify-content:center" onclick="saveDvBrouillon()">💾 Brouillon</button>
+      <button class="btn btn-primary" style="font-size:13px" onclick="generateAndSendDevis()">📧 Générer & Envoyer</button>
+    </div>
+    <button class="btn" style="width:100%;justify-content:center;background:var(--success-bg);color:var(--success);border:1px solid var(--success)" onclick="generateDevisPDF()">⬇ Télécharger PDF</button>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="cancelDevisForm()">Annuler</button>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="nav-item active" onclick="switchTab('agenda')" id="nav-agenda">
@@ -473,6 +570,11 @@
   <button class="nav-item" onclick="switchTab('cr')" id="nav-cr">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
     CR
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchTab('devis')" id="nav-devis">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/><path d="M17 21l2-2 2 2"/></svg>
+    Devis
     <div class="nav-dot"></div>
   </button>
   <button class="nav-item" onclick="switchTab('suivi')" id="nav-suivi">
@@ -501,6 +603,8 @@
 <button class="fab" id="fab-agenda" onclick="openAddEvent()">+</button>
 <!-- FAB for Contact -->
 <button class="fab" id="fab-contact" style="display:none" onclick="openAddContact()">+</button>
+<!-- FAB for Devis -->
+<button class="fab" id="fab-devis" style="display:none" onclick="openNewDevis()">+</button>
 
 <!-- MODAL: Add / Edit Contact -->
 <div class="modal-overlay" id="modal-contact" style="display:none" onclick="closeModalIfOverlay(event,'modal-contact')">
@@ -645,7 +749,7 @@ function init() {
 
 function updateUserBadge() {
   document.getElementById('currentUserBadge').textContent = currentUser;
-  ['agenda','planning','cr','suivi','stats'].forEach(s => {
+  ['agenda','planning','cr','suivi','stats','devis'].forEach(s => {
     const el = document.getElementById(s+'-user-name');
     if(el) el.textContent = currentUser + ' · ' + currentCompany;
   });
@@ -659,11 +763,13 @@ function switchTab(name) {
   document.getElementById('nav-'+name).classList.add('active');
   document.getElementById('fab-agenda').style.display  = (name==='agenda')  ? 'flex' : 'none';
   document.getElementById('fab-contact').style.display = (name==='contact') ? 'flex' : 'none';
+  document.getElementById('fab-devis').style.display   = (name==='devis')   ? 'flex' : 'none';
   if(name==='agenda')  renderEventList();
   if(name==='planning') renderPlanning();
   if(name==='suivi')   renderClientList();
   if(name==='stats')   renderStats();
   if(name==='contact') renderContactList();
+  if(name==='devis')   renderDevisList();
 }
 
 let planView = 'semaine';
@@ -1128,6 +1234,438 @@ function openEvQuickContact() {
   document.getElementById('btnDeleteContact').style.display = 'none';
   updateCntClientSuggestions();
   document.getElementById('modal-contact').style.display = 'flex';
+}
+
+// ============ DEVIS ============
+const SOCIETES = {
+  'CHAMORIN': {
+    nom: 'CHAMORIN',
+    adresse: '12 Rue des Pyrénées\n64000 PAU',
+    tel: '05 59 XX XX XX',
+    email: 'contact@chamorin.fr',
+    siret: '123 456 789 00012',
+    tva_intra: 'FR12123456789'
+  },
+  'PENEZ HERMAN': {
+    nom: 'PENEZ HERMAN',
+    adresse: '8 Avenue du Commerce\n64100 BAYONNE',
+    tel: '05 59 XX XX XX',
+    email: 'contact@penezherman.fr',
+    siret: '987 654 321 00034',
+    tva_intra: 'FR98987654321'
+  }
+};
+
+let dvLignes = [];
+let editingDevisId = null;
+
+function getNextDevisRef() {
+  const all = loadData('crm_devis');
+  const year = new Date().getFullYear();
+  const n = all.filter(d=>d.ref&&d.ref.includes(String(year))).length + 1;
+  return `DEV-${year}-${String(n).padStart(3,'0')}`;
+}
+
+function renderDevisList() {
+  const all = loadData('crm_devis').sort((a,b)=>b.createdAt>a.createdAt?1:-1);
+  const el = document.getElementById('devisList');
+  if(!all.length) {
+    el.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Aucun devis créé</p></div>`;
+    return;
+  }
+  let html = '<div style="border-radius:var(--radius);overflow:hidden;border:1px solid var(--gray-border)">';
+  all.forEach((dv,i) => {
+    const isLast = i===all.length-1;
+    const statusColor = dv.statut==='Envoyé'?'var(--success)':dv.statut==='Brouillon'?'var(--warning)':'var(--orange)';
+    const statusBg = dv.statut==='Envoyé'?'var(--success-bg)':dv.statut==='Brouillon'?'var(--warning-bg)':'var(--orange-light)';
+    const ttc = (dv.lignes||[]).reduce((s,l)=>s+l.qte*l.pu,0)*(1+(dv.tva||20)/100);
+    html += `<div style="background:var(--white);padding:14px 16px;display:flex;align-items:center;gap:12px;${!isLast?'border-bottom:1px solid var(--gray-border)':''};cursor:pointer" onclick="openEditDevis('${dv.id}')">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+          <span style="font-size:13px;font-weight:700;color:var(--navy)">${dv.ref}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:50px;background:${statusBg};color:${statusColor}">${dv.statut||'Brouillon'}</span>
+        </div>
+        <div style="font-size:13px;color:var(--gray-text)">${dv.client}</div>
+        <div style="font-size:12px;color:var(--gray-text)">${dv.date} · ${dv.commercial}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:15px;font-weight:700;color:var(--navy)">${ttc.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+        <div style="font-size:10px;color:var(--gray-text)">TTC</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function setDevisView(v, btn) {
+  document.querySelectorAll('#screen-devis .company-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('devisListView').style.display = (v==='liste') ? 'block' : 'none';
+  document.getElementById('devisFormView').style.display = (v==='form')  ? 'block' : 'none';
+  document.getElementById('fab-devis').style.display = (v==='liste') ? 'flex' : 'none';
+}
+
+function openNewDevis() {
+  editingDevisId = null;
+  dvLignes = [];
+  document.getElementById('dv-client').value = '';
+  document.getElementById('dv-adresse').value = '';
+  document.getElementById('dv-interlocuteur').innerHTML = '<option value="">— Optionnel —</option>';
+  document.getElementById('dv-ref').value = getNextDevisRef();
+  document.getElementById('dv-date').value = formatDate(new Date());
+  document.getElementById('dv-validite').value = '30';
+  document.getElementById('dv-tva').value = '20';
+  document.getElementById('dv-remarques').value = 'Paiement à 30 jours fin de mois.\nDevis valable 30 jours à compter de sa date d\'émission.';
+  renderDvLignes();
+  recalcDv();
+  buildDvClientSuggestions();
+  document.getElementById('devis-tab-new').classList.add('active');
+  document.getElementById('devis-tab-liste').classList.remove('active');
+  setDevisView('form');
+}
+
+function openEditDevis(id) {
+  const dv = loadData('crm_devis').find(d=>d.id===id);
+  if(!dv) return;
+  editingDevisId = id;
+  dvLignes = dv.lignes ? JSON.parse(JSON.stringify(dv.lignes)) : [];
+  document.getElementById('dv-client').value = dv.client||'';
+  document.getElementById('dv-adresse').value = dv.adresseClient||'';
+  document.getElementById('dv-ref').value = dv.ref||'';
+  document.getElementById('dv-date').value = dv.date||formatDate(new Date());
+  document.getElementById('dv-validite').value = String(dv.validite||30);
+  document.getElementById('dv-tva').value = String(dv.tva||20);
+  document.getElementById('dv-remarques').value = dv.remarques||'';
+  updateDvInterlocSelect(dv.interlocuteurId||'');
+  renderDvLignes();
+  recalcDv();
+  buildDvClientSuggestions();
+  setDevisView('form');
+}
+
+function cancelDevisForm() {
+  setDevisView('liste', document.getElementById('devis-tab-liste'));
+  document.getElementById('devis-tab-liste').classList.add('active');
+  document.getElementById('devis-tab-new').classList.remove('active');
+  renderDevisList();
+}
+
+function buildDvClientSuggestions() {
+  const crs = loadData('crm_crs');
+  const contacts = loadData('crm_contacts');
+  const clients = [...new Set([...crs.map(c=>c.client),...contacts.map(c=>c.client)])].sort();
+  document.getElementById('dvClientSuggestions').innerHTML = clients.map(c=>`<option value="${c}">`).join('');
+}
+
+function updateDvInterlocSelect(selectedId='') {
+  const client = document.getElementById('dv-client').value.trim();
+  const contacts = loadData('crm_contacts').filter(c=>c.client.toLowerCase()===client.toLowerCase());
+  const sel = document.getElementById('dv-interlocuteur');
+  sel.innerHTML = '<option value="">— Optionnel —</option>';
+  contacts.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.prenom||''} ${c.nom||''}${c.fonction?' · '+c.fonction:''}`.trim();
+    if(c.id===selectedId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__';
+  newOpt.textContent = '+ Nouveau contact…';
+  sel.appendChild(newOpt);
+}
+
+function openDvQuickContact() {
+  document.getElementById('cnt-client').value = document.getElementById('dv-client').value.trim();
+  openAddContact();
+}
+
+function addDvLigne() {
+  dvLignes.push({ ref:'', designation:'', qte:1, pu:0, unite:'pce' });
+  renderDvLignes();
+}
+
+function removeDvLigne(i) {
+  dvLignes.splice(i,1);
+  renderDvLignes();
+  recalcDv();
+}
+
+function renderDvLignes() {
+  const el = document.getElementById('dvLignes');
+  if(!dvLignes.length) {
+    el.innerHTML = '<p style="color:var(--gray-text);font-size:13px;text-align:center;padding:8px 0">Aucun article — cliquez "+ Ajouter"</p>';
+    return;
+  }
+  let html = '';
+  dvLignes.forEach((l,i) => {
+    const total = (l.qte*l.pu).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    html += `<div style="border:1px solid var(--gray-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;background:var(--gray-bg)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:0.5px">Article ${i+1}</span>
+        <button onclick="removeDvLigne(${i})" style="background:var(--danger-bg);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--danger)">✕</button>
+      </div>
+      <div class="form-group" style="margin-bottom:8px"><input type="text" placeholder="Référence article…" value="${l.ref||''}" oninput="dvLignes[${i}].ref=this.value" style="font-size:13px;padding:8px 10px"></div>
+      <div class="form-group" style="margin-bottom:8px"><input type="text" placeholder="Désignation / description…" value="${l.designation||''}" oninput="dvLignes[${i}].designation=this.value" style="font-size:13px;padding:8px 10px"></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 2fr;gap:8px;margin-bottom:6px">
+        <div><input type="number" placeholder="Qté" value="${l.qte}" min="0" step="0.01" oninput="dvLignes[${i}].qte=parseFloat(this.value)||0;recalcDv();renderDvTotaux()" style="font-size:13px;padding:8px 10px"></div>
+        <div>
+          <select oninput="dvLignes[${i}].unite=this.value" style="font-size:12px;padding:8px 6px">
+            <option value="pce" ${l.unite==='pce'?'selected':''}>Pce</option>
+            <option value="kg" ${l.unite==='kg'?'selected':''}>Kg</option>
+            <option value="m²" ${l.unite==='m²'?'selected':''}>m²</option>
+            <option value="m" ${l.unite==='m'?'selected':''}>m</option>
+            <option value="L" ${l.unite==='L'?'selected':''}>L</option>
+            <option value="sac" ${l.unite==='sac'?'selected':''}>Sac</option>
+            <option value="palette" ${l.unite==='palette'?'selected':''}>Pal.</option>
+          </select>
+        </div>
+        <div><input type="number" placeholder="PU HT €" value="${l.pu}" min="0" step="0.01" oninput="dvLignes[${i}].pu=parseFloat(this.value)||0;recalcDv();renderDvTotaux()" style="font-size:13px;padding:8px 10px"></div>
+      </div>
+      <div style="text-align:right;font-size:13px;font-weight:700;color:var(--navy)">Total HT : ${total} €</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function recalcDv() {
+  const ht = dvLignes.reduce((s,l)=>s+(l.qte*l.pu),0);
+  const tvaRate = parseFloat(document.getElementById('dv-tva').value)||20;
+  const tva = ht*tvaRate/100;
+  const ttc = ht+tva;
+  const fmt = v => v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  document.getElementById('dv-ht').textContent = fmt(ht);
+  document.getElementById('dv-tva-montant').textContent = fmt(tva);
+  document.getElementById('dv-ttc').textContent = fmt(ttc);
+}
+
+function renderDvTotaux() { recalcDv(); }
+
+function buildDevisObject(statut) {
+  const interlocId = document.getElementById('dv-interlocuteur').value;
+  return {
+    id: editingDevisId || Date.now().toString(),
+    ref: document.getElementById('dv-ref').value.trim(),
+    client: document.getElementById('dv-client').value.trim(),
+    adresseClient: document.getElementById('dv-adresse').value.trim(),
+    interlocuteurId: interlocId==='__new__'?'':interlocId,
+    date: document.getElementById('dv-date').value,
+    validite: parseInt(document.getElementById('dv-validite').value),
+    tva: parseFloat(document.getElementById('dv-tva').value),
+    remarques: document.getElementById('dv-remarques').value.trim(),
+    lignes: JSON.parse(JSON.stringify(dvLignes)),
+    commercial: currentUser,
+    company: currentCompany,
+    statut,
+    createdAt: editingDevisId ? (loadData('crm_devis').find(d=>d.id===editingDevisId)||{}).createdAt||new Date().toISOString() : new Date().toISOString()
+  };
+}
+
+function saveDvBrouillon() {
+  const dv = buildDevisObject('Brouillon');
+  let all = loadData('crm_devis');
+  if(editingDevisId) { all = all.map(d=>d.id===editingDevisId?dv:d); } else { all.push(dv); }
+  saveData('crm_devis', all);
+  editingDevisId = dv.id;
+  alert('✓ Devis sauvegardé en brouillon.');
+}
+
+function buildDevisHTML(dv) {
+  const soc = SOCIETES[dv.company] || SOCIETES['CHAMORIN'];
+  const contacts = loadData('crm_contacts');
+  const interlo = dv.interlocuteurId ? contacts.find(c=>c.id===dv.interlocuteurId) : null;
+  const tvaRate = dv.tva||20;
+  const ht = (dv.lignes||[]).reduce((s,l)=>s+l.qte*l.pu,0);
+  const tvaM = ht*tvaRate/100;
+  const ttc = ht+tvaM;
+  const fmt = v => v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const dateExp = new Date(dv.date+'T12:00:00');
+  dateExp.setDate(dateExp.getDate()+(dv.validite||30));
+  const fmtDate = d => new Date(d+'T12:00:00').toLocaleDateString('fr-FR');
+
+  const lignesHtml = (dv.lignes||[]).map((l,i)=>`
+    <tr style="background:${i%2===0?'#fff':'#F6F7F9'}">
+      <td style="padding:8px 10px;font-size:12px;color:#6B7A99">${l.ref||'—'}</td>
+      <td style="padding:8px 10px;font-size:13px">${l.designation||''}</td>
+      <td style="padding:8px 10px;font-size:13px;text-align:center">${l.qte} ${l.unite||''}</td>
+      <td style="padding:8px 10px;font-size:13px;text-align:right">${fmt(l.pu)} €</td>
+      <td style="padding:8px 10px;font-size:13px;font-weight:700;text-align:right">${fmt(l.qte*l.pu)} €</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Devis ${dv.ref}</title>
+<style>
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#1A2540;margin:0;padding:0;font-size:13px}
+  .page{max-width:800px;margin:0 auto;padding:40px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:3px solid #E8650A}
+  .logo-block h1{font-size:22px;font-weight:800;color:#1A2540;margin:0 0 4px}
+  .logo-block p{font-size:11px;color:#6B7A99;margin:0;line-height:1.6}
+  .devis-title{text-align:right}
+  .devis-title h2{font-size:28px;font-weight:800;color:#E8650A;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px}
+  .devis-title p{font-size:12px;color:#6B7A99;margin:0}
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px}
+  .partie{background:#F6F7F9;border-radius:10px;padding:16px}
+  .partie h3{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#E8650A;font-weight:700;margin:0 0 10px}
+  .partie p{margin:0 0 3px;font-size:13px;line-height:1.5}
+  .meta-bar{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap}
+  .meta-item{background:#1A2540;color:white;border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px}
+  .meta-item .lbl{font-size:10px;color:#9DB4CC;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+  .meta-item .val{font-size:13px;font-weight:700}
+  table{width:100%;border-collapse:collapse;margin-bottom:24px}
+  thead th{background:#1A2540;color:white;padding:10px;font-size:11px;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+  thead th:last-child,thead th:nth-child(4),thead th:nth-child(3){text-align:right}
+  .totaux{display:flex;justify-content:flex-end}
+  .totaux-table{width:260px}
+  .totaux-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #E2E6EE}
+  .totaux-row.ttc{border-top:2px solid #E8650A;border-bottom:none;padding-top:10px;margin-top:4px}
+  .totaux-row.ttc span:first-child{font-size:15px;font-weight:800;color:#1A2540}
+  .totaux-row.ttc span:last-child{font-size:18px;font-weight:800;color:#E8650A}
+  .footer{margin-top:40px;padding-top:20px;border-top:1px solid #E2E6EE;font-size:11px;color:#6B7A99;line-height:1.6}
+  .remarques{background:#FDF0E8;border-left:4px solid #E8650A;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px;font-size:12px;line-height:1.6;white-space:pre-wrap}
+</style></head><body>
+<div class="page">
+  <div class="header">
+    <div class="logo-block">
+      <h1>${soc.nom}</h1>
+      <p>${soc.adresse.replace(/\n/g,'<br>')}</p>
+      <p>Tél : ${soc.tel}</p>
+      <p>${soc.email}</p>
+      <p style="margin-top:4px;font-size:10px">SIRET : ${soc.siret} | TVA : ${soc.tva_intra}</p>
+    </div>
+    <div class="devis-title">
+      <h2>Devis</h2>
+      <p style="font-size:16px;font-weight:800;color:#1A2540">${dv.ref}</p>
+      <p>Émis par : <strong>${dv.commercial}</strong></p>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="partie">
+      <h3>Client</h3>
+      <p><strong>${dv.client}</strong></p>
+      ${interlo?`<p>${interlo.prenom||''} ${interlo.nom||''}</p><p style="color:#6B7A99">${interlo.fonction||''}</p>${interlo.email?`<p>${interlo.email}</p>`:''}`:''}
+      ${dv.adresseClient?`<p style="margin-top:6px;white-space:pre-wrap">${dv.adresseClient}</p>`:''}
+    </div>
+    <div class="partie">
+      <h3>Émetteur</h3>
+      <p><strong>${soc.nom}</strong></p>
+      <p>${dv.commercial}</p>
+    </div>
+  </div>
+
+  <div class="meta-bar">
+    <div class="meta-item"><div class="lbl">Date</div><div class="val">${fmtDate(dv.date)}</div></div>
+    <div class="meta-item"><div class="lbl">Validité</div><div class="val">${dv.validite} jours</div></div>
+    <div class="meta-item"><div class="lbl">Expire le</div><div class="val">${dateExp.toLocaleDateString('fr-FR')}</div></div>
+    <div class="meta-item"><div class="lbl">TVA</div><div class="val">${tvaRate}%</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:100px">Référence</th>
+        <th>Désignation</th>
+        <th style="width:80px;text-align:center">Qté</th>
+        <th style="width:90px;text-align:right">PU HT</th>
+        <th style="width:100px;text-align:right">Total HT</th>
+      </tr>
+    </thead>
+    <tbody>${lignesHtml}</tbody>
+  </table>
+
+  <div class="totaux">
+    <div class="totaux-table">
+      <div class="totaux-row"><span>Sous-total HT</span><span>${fmt(ht)} €</span></div>
+      <div class="totaux-row"><span>TVA (${tvaRate}%)</span><span>${fmt(tvaM)} €</span></div>
+      <div class="totaux-row ttc"><span>TOTAL TTC</span><span>${fmt(ttc)} €</span></div>
+    </div>
+  </div>
+
+  ${dv.remarques?`<div class="remarques">${dv.remarques}</div>`:''}
+
+  <div class="footer">
+    <p><strong>${soc.nom}</strong> — ${soc.adresse.replace(/\n/,', ')} — SIRET : ${soc.siret} — TVA intracommunautaire : ${soc.tva_intra}</p>
+    <p>Ce devis est valable ${dv.validite} jours à compter du ${fmtDate(dv.date)}.</p>
+  </div>
+</div>
+</body></html>`;
+}
+
+function generateDevisPDF() {
+  const client = document.getElementById('dv-client').value.trim();
+  if(!client || !dvLignes.length) { alert('Veuillez renseigner le client et au moins un article.'); return; }
+  saveDvBrouillon();
+  const dv = buildDevisObject('Brouillon');
+  const html = buildDevisHTML(dv);
+  const win = window.open('','_blank');
+  if(!win) { alert('Autorisez les popups pour générer le PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); }, 600);
+}
+
+function generateAndSendDevis() {
+  const client = document.getElementById('dv-client').value.trim();
+  if(!client || !dvLignes.length) { alert('Veuillez renseigner le client et au moins un article.'); return; }
+
+  const dv = buildDevisObject('Envoyé');
+  let all = loadData('crm_devis');
+  if(editingDevisId) { all = all.map(d=>d.id===editingDevisId?dv:d); } else { all.push(dv); }
+  saveData('crm_devis', all);
+  editingDevisId = dv.id;
+
+  const soc = SOCIETES[dv.company]||SOCIETES['CHAMORIN'];
+  const contacts = loadData('crm_contacts');
+  const interlo = dv.interlocuteurId ? contacts.find(c=>c.id===dv.interlocuteurId) : null;
+  const ht = dvLignes.reduce((s,l)=>s+l.qte*l.pu,0);
+  const ttc = ht*(1+dv.tva/100);
+  const fmt = v => v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  const lignesText = dvLignes.map(l=>`  - ${l.designation||l.ref||'Article'} : ${l.qte} ${l.unite} × ${fmt(l.pu)} € = ${fmt(l.qte*l.pu)} € HT`).join('%0A');
+  const to = interlo?.email||'';
+  const subject = encodeURIComponent(`Devis ${dv.ref} – ${dv.client}`);
+  const body = encodeURIComponent(`Bonjour${interlo?' '+interlo.prenom:''},
+
+Veuillez trouver ci-joint notre devis ${dv.ref} du ${new Date(dv.date+'T12:00:00').toLocaleDateString('fr-FR')}.
+
+Client : ${dv.client}
+Commercial : ${dv.commercial} — ${soc.nom}
+
+Récapitulatif :
+${dvLignes.map(l=>`  - ${l.designation||l.ref||'Article'} : ${l.qte} ${l.unite} × ${fmt(l.pu)} € = ${fmt(l.qte*l.pu)} € HT`).join('\n')}
+
+Sous-total HT : ${fmt(ht)} €
+TVA (${dv.tva}%) : ${fmt(ht*dv.tva/100)} €
+Total TTC : ${fmt(ttc)} €
+
+Ce devis est valable ${dv.validite} jours.
+
+${dv.remarques||''}
+
+Cordialement,
+${dv.commercial}
+${soc.nom}
+${soc.tel}
+${soc.email}`);
+
+  // Ouvrir le devis en fenêtre d'impression + ouvrir le client mail
+  const html = buildDevisHTML(dv);
+  const win = window.open('','_blank');
+  if(win) {
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(()=>{ win.print(); }, 600);
+  }
+  setTimeout(()=>{
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  }, 800);
+
+  alert('✓ Devis marqué comme Envoyé.\nLe devis s\'ouvre pour impression/PDF.\nVotre client mail s\'ouvrira dans un instant.');
+  cancelDevisForm();
 }
 
 // ============ CONTACTS ============
