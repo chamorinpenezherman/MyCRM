@@ -72,7 +72,7 @@
   #sidebar-overlay.visible { display: block; }
 
   /* ─── MAIN CONTENT ──────────────────────────────────── */
-  #main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  #main-content { flex: 1; min-width: 0; overflow-y: auto; }
 
   /* ─── SCREENS ───────────────────────────────────────── */
   .screen { display: none; padding: 20px 20px 100px; animation: fadeIn 0.2s ease; }
@@ -2264,22 +2264,37 @@ function exportExcel() {
 
   // ── Sheet builder ─────────────────────────────────────────────────────────
   function buildSheet(name, headers, rows, colWidths, headerStyleIdx, altRows=true) {
-    const cols = colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+    const ncols = Math.max(colWidths.length, headers.length);
+    const lastCol = col(ncols);
+    const cols = colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" bestFit="1" customWidth="1"/>`).join('');
+
+    // On démarre à la row 1 avec freeze sur row 3 (titre=1, en-têtes=2, données=3+)
     let xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<sheetViews><sheetView workbookViewId="0" showGridLines="1"><selection activeCell="A1"/></sheetView></sheetViews>
-<sheetFormatPr defaultRowHeight="18" customHeight="1"/>
-<cols>${cols}</cols><sheetData>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews>
+  <sheetView workbookViewId="0">
+    <pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/>
+    <selection pane="bottomLeft" activeCell="A3" sqref="A3"/>
+  </sheetView>
+</sheetViews>
+<sheetFormatPr defaultRowHeight="18"/>
+<cols>${cols}</cols>
+<sheetData>`;
 
-    // Title row
-    xml += `<row r="1" ht="30" customHeight="1"><c r="A1" t="s" s="7"><v>${si(name)}</v></c></row>`;
+    // Ligne 1 : titre de l'onglet (grande, fond navy, texte blanc)
+    xml += `<row r="1" ht="32" customHeight="1">`;
+    xml += `<c r="A1" t="s" s="7"><v>${si(name)}</v></c>`;
+    // Cellules vides du reste de la ligne titre avec le même style pour un rendu uniforme
+    for(let c2=2; c2<=ncols; c2++) xml += `<c r="${col(c2)}1" s="7"/>`;
+    xml += `</row>`;
 
-    // Header row
-    xml += `<row r="2" ht="22" customHeight="1">`;
+    // Ligne 2 : en-têtes de colonnes
+    xml += `<row r="2" ht="24" customHeight="1">`;
     headers.forEach((h,i) => { xml += sCell(2, i+1, h, headerStyleIdx); });
     xml += `</row>`;
 
-    // Data rows
+    // Lignes de données
     rows.forEach((row, ri) => {
       const rn = ri + 3;
       const baseStyle = altRows ? (ri%2===0 ? 5 : 6) : 6;
@@ -2294,9 +2309,10 @@ function exportExcel() {
     });
 
     xml += `</sheetData>`;
-    // Freeze header rows
-    xml += `<sheetViews><sheetView workbookViewId="0"><pane ySplit="2" topLeftCell="A3" state="frozen"/></sheetView></sheetViews>`;
-    xml += `<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+    // Merge cells pour la ligne de titre
+    xml += `<mergeCells count="1"><mergeCell ref="A1:${lastCol}1"/></mergeCells>`;
+    xml += `<pageSetup orientation="landscape" fitToPage="1" fitToWidth="1" fitToHeight="0"/>`;
+    xml += `</worksheet>`;
     return xml;
   }
 
@@ -2329,53 +2345,73 @@ function exportExcel() {
       styleCell(ratio, ratioStyle),
     ]);
   });
-  const synthXml = buildSheet('📊 Synthèse par commercial', synthHeaders, synthRows, [20,16,12,14,14,10,10,14], 1);
+  const synthXml = buildSheet('SYNTHESE COMMERCIALE - '+from+' au '+to, synthHeaders, synthRows, [20,16,12,14,14,10,10,14], 1);
 
   // ── SHEET 2 : Comptes Rendus ──────────────────────────────────────────────
-  const crHeaders = ['Date','Commercial','Société','Client','Type visite','Prise de commande','Présence expo','Mise en place','Commentaire'];
+  const crHeaders = ['Date','Commercial','Societe','Client','Type visite','Prise de commande','Presence expo','Mise en place','Commentaire'];
   const crRows = crs.slice().sort((a,b)=>a.date>b.date?1:-1).map(cr => {
-    const cmdStyle = cr.cmd==='oui'?9:cr.cmd==='non'?10:6;
-    const expoStyle= cr.expo==='oui'?9:cr.expo==='non'?10:6;
-    const mepStyle = cr.mep==='oui'?9:cr.mep==='non'?10:6;
+    const cmdStyle  = cr.cmd==='oui'?9 : cr.cmd==='non'?10 : 6;
+    const expoStyle = cr.expo==='oui'?9 : cr.expo==='non'?10 : 6;
+    const mepStyle  = cr.mep==='oui'?9 : cr.mep==='non'?10 : 6;
     return [
-      cr.date, styleCell(cr.user,13), cr.company||'', cr.client||'',
-      cr.type||'',
-      styleCell(cr.cmd||'—', cmdStyle),
-      styleCell(cr.expo||'—', expoStyle),
-      styleCell(cr.mep||'—', mepStyle),
+      cr.date, styleCell(cr.user,13), cr.company||'', cr.client||'', cr.type||'',
+      styleCell(cr.cmd||'-', cmdStyle),
+      styleCell(cr.expo||'-', expoStyle),
+      styleCell(cr.mep||'-', mepStyle),
       cr.comment||''
     ];
   });
-  const crXml = buildSheet('📝 Comptes Rendus', crHeaders, crRows, [13,14,16,22,18,16,16,14,45], 2);
+  const crXml = buildSheet('COMPTES RENDUS - '+from+' au '+to, crHeaders, crRows, [13,14,16,22,18,16,16,14,45], 2);
 
   // ── SHEET 3 : Agenda / RDV ────────────────────────────────────────────────
-  const evHeaders = ['Date','Heure','Commercial','Société','Client / Lieu','Type RDV','Durée (min)'];
+  const evHeaders = ['Date','Heure','Commercial','Societe','Client - Lieu','Type RDV','Duree (min)'];
   const evRows = evs.slice().sort((a,b)=>a.date>b.date?1:-1).map(ev => [
-    ev.date, ev.time||'', styleCell(ev.user,13), ev.company||'', ev.client||'', ev.type||'', typeof ev.duration==='number'?ev.duration:''
+    ev.date, ev.time||'', styleCell(ev.user,13), ev.company||'', ev.client||'', ev.type||'',
+    typeof ev.duration==='number' ? ev.duration : ''
   ]);
-  const evXml = buildSheet('📅 Agenda', evHeaders, evRows, [13,10,14,16,24,20,13], 3);
+  const evXml = buildSheet('AGENDA ET RDV - '+from+' au '+to, evHeaders, evRows, [13,10,14,16,24,20,13], 3);
 
-  // ── SHEET 4 : Contacts ────────────────────────────────────────────────────
-  const cntHeaders = ['Client','Prénom','Nom','Fonction','Email','Téléphone'];
-  const cntRows = contacts.sort((a,b)=>a.client>b.client?1:-1).map(c=>[
+  // ── SHEET 4 : Devis ───────────────────────────────────────────────────────
+  const devisAll = loadData('crm_devis');
+  const dvHeaders = ['Reference','Client','Commercial','Societe','Date','Statut','Nb articles','Total HT (EUR)','TVA (%)','Total TTC (EUR)'];
+  const dvRows = devisAll.sort((a,b)=>a.date>b.date?1:-1).map(dv => {
+    const ht  = (dv.lignes||[]).reduce((s,l)=>s+l.qte*l.pu, 0);
+    const ttc = ht * (1+(dv.tva||20)/100);
+    const statStyle = dv.statut==='Envoye'?9 : dv.statut==='Brouillon'?11 : 8;
+    return [
+      styleCell(dv.ref||'', 13), dv.client||'', styleCell(dv.commercial||'',13),
+      dv.company||'', dv.date||'',
+      styleCell(dv.statut||'Brouillon', statStyle),
+      (dv.lignes||[]).length,
+      parseFloat(ht.toFixed(2)),
+      dv.tva||20,
+      parseFloat(ttc.toFixed(2)),
+    ];
+  });
+  const dvXml = buildSheet('DEVIS', dvHeaders, dvRows, [16,24,14,16,13,12,12,14,10,14], 12);
+
+  // ── SHEET 5 : Contacts ────────────────────────────────────────────────────
+  const cntHeaders = ['Client','Prenom','Nom','Fonction','Email','Telephone'];
+  const cntRows = contacts.slice().sort((a,b)=>a.client>b.client?1:-1).map(c=>[
     styleCell(c.client,13), c.prenom||'', c.nom||'', c.fonction||'', c.email||'', c.tel||''
   ]);
-  const cntXml = buildSheet('👤 Contacts', cntHeaders, cntRows, [28,14,16,22,30,16], 4);
+  const cntXml = buildSheet('CONTACTS CLIENTS', cntHeaders, cntRows, [28,14,16,22,30,16], 4);
 
-  // ── SHEET 5 : Catalogue ───────────────────────────────────────────────────
-  const catHeaders = ['Code','Désignation','EAN','Prix HT (€)'];
+  // ── SHEET 6 : Catalogue ───────────────────────────────────────────────────
+  const catHeaders = ['Code','Designation','EAN','Prix HT (EUR)'];
   const catRows = CATALOGUE_ARTICLES.map(a=>[
     styleCell(a.code,13), a.designation, a.ean, typeof a.pv==='number'?a.pv:''
   ]);
-  const catXml = buildSheet('🏷️ Catalogue', catHeaders, catRows, [12,55,18,14], 12);
+  const catXml = buildSheet('CATALOGUE ARTICLES', catHeaders, catRows, [12,55,18,14], 12);
 
   // ── Workbook assembly ─────────────────────────────────────────────────────
   const sheets = [
-    { name:'Synthèse',       xml: synthXml },
-    { name:'Comptes Rendus', xml: crXml    },
-    { name:'Agenda',         xml: evXml    },
-    { name:'Contacts',       xml: cntXml   },
-    { name:'Catalogue',      xml: catXml   },
+    { name:'Synthese',        xml: synthXml },
+    { name:'Comptes Rendus',  xml: crXml    },
+    { name:'Agenda RDV',      xml: evXml    },
+    { name:'Devis',           xml: dvXml    },
+    { name:'Contacts',        xml: cntXml   },
+    { name:'Catalogue',       xml: catXml   },
   ];
 
   const wbXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
