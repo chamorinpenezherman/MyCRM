@@ -535,6 +535,22 @@
     <div id="statsJoursOuvres" style="margin-bottom:10px"></div>
     <div class="bar-chart" id="chartRatio"></div>
   </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">Couverture par département</div>
+      <button class="btn btn-ghost btn-sm" onclick="openDeptPortefeuille()">⚙ Portefeuille</button>
+    </div>
+    <div id="chartDept"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:11px;color:var(--gray-text)">
+      <span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block"></span>≥ 70%
+      <span style="width:10px;height:10px;border-radius:2px;background:var(--warning);display:inline-block;margin-left:6px"></span>40–70%
+      <span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;margin-left:6px"></span>&lt; 40%
+    </div>
+    <div style="margin-top:10px;padding:10px;background:var(--gray-bg);border-radius:var(--radius-sm);font-size:11px;color:var(--gray-text);line-height:1.6">
+      Le département est extrait du nom du client (ex. "Carrefour <b>66</b> Perpignan"). Configurez votre portefeuille via ⚙ pour calculer le taux de couverture.
+    </div>
+  </div>
 </div>
 
 <!-- SCREEN: CONTACT -->
@@ -774,6 +790,22 @@
   <div class="card">
     <div class="card-title">Synthèse par commercial</div>
     <div id="admin-tableau" style="overflow-x:auto"></div>
+  </div>
+</div>
+
+<!-- MODAL: Portefeuille départements -->
+<div class="modal-overlay" id="modal-dept" style="display:none" onclick="closeModalIfOverlay(event,'modal-dept')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="modal-title">Portefeuille par département</div>
+      <button class="modal-close" onclick="closeModal('modal-dept')">×</button>
+    </div>
+    <p style="font-size:12px;color:var(--gray-text);margin-bottom:16px;line-height:1.5">
+      Saisissez le nombre total de clients dans votre portefeuille pour chaque département. Le taux de couverture sera calculé automatiquement selon les visites réalisées.
+    </p>
+    <div id="deptPortefeuilleForm" style="max-height:400px;overflow-y:auto"></div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="saveDeptPortefeuille()">Enregistrer</button>
   </div>
 </div>
 
@@ -2988,6 +3020,181 @@ function renderStats() {
       <div class="bar-val" style="color:${color};width:36px">${ratioDisp}</div>
     </div>`;
   }).join('') + (byRatio.length ? `<div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--gray-text)"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block"></span>≥ 2,0 <span style="width:10px;height:10px;border-radius:2px;background:var(--warning);display:inline-block;margin-left:8px"></span>1,4–2,0 <span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;margin-left:8px"></span>&lt; 1,4</div>` : '<p style="color:var(--gray-text);font-size:13px">Aucune donnée</p>');
+
+  // Couverture département
+  renderDeptChart(crs);
+}
+
+// Extrait le numéro de département (2 ou 3 chiffres) depuis le nom d'un client
+// Ex : "Leroy Merlin 66 Perpignan" → "66"
+//      "Castorama 2A Ajaccio"     → "2A"
+//      "Truffaut Bordeaux 33"     → "33"
+function extractDept(clientName) {
+  if(!clientName) return null;
+  // Chercher pattern : nombre de 2-3 chiffres isolé, ou 2A/2B (Corse)
+  const m = clientName.match(/\b(2[AB]|9[0-6]\d|[0-8]\d|0[1-9])\b/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+// Déduit le département depuis l'adresse d'un contact lié au client
+function getDeptFromContacts(clientName, contacts) {
+  const c = contacts.find(x => x.client === clientName && x.adresse);
+  if(!c) return null;
+  const m = (c.adresse||'').match(/\b(\d{5})\b/);
+  return m ? m[1].slice(0,2) : null;
+}
+
+function getDeptForClient(clientName, contacts) {
+  return extractDept(clientName) || getDeptFromContacts(clientName, contacts) || null;
+}
+
+function renderDeptChart(crs) {
+  const contacts  = loadData('crm_contacts');
+  const portfolio = loadData('crm_dept_portfolio') || {};  // { dept: nbClients }
+
+  // Compter les clients uniques visités par département
+  const visitedByDept = {};  // dept → Set of client names
+  crs.forEach(cr => {
+    const dept = getDeptForClient(cr.client, contacts);
+    if(!dept) return;
+    if(!visitedByDept[dept]) visitedByDept[dept] = new Set();
+    visitedByDept[dept].add(cr.client);
+  });
+
+  // Union des départements connus (visités + portefeuille configuré)
+  const allDepts = [...new Set([...Object.keys(visitedByDept), ...Object.keys(portfolio)])].sort();
+
+  const el = document.getElementById('chartDept');
+  if(!allDepts.length) {
+    el.innerHTML = '<p style="color:var(--gray-text);font-size:13px;text-align:center;padding:12px 0">Aucune donnée. Ajoutez un numéro de département dans le nom de vos clients (ex. "Leroy Merlin 66 Perpignan") ou configurez votre portefeuille via ⚙.</p>';
+    return;
+  }
+
+  let html = '';
+  allDepts.forEach(dept => {
+    const visites    = visitedByDept[dept] ? visitedByDept[dept].size : 0;
+    const portefeuil = parseInt(portfolio[dept]) || 0;
+    const hasPf      = portefeuil > 0;
+    const taux       = hasPf ? Math.min(Math.round(visites / portefeuil * 100), 100) : null;
+    const color      = taux === null ? '#9DB4CC'
+                     : taux >= 70   ? 'var(--success)'
+                     : taux >= 40   ? 'var(--warning)'
+                     : 'var(--danger)';
+    const pct        = taux !== null ? taux : Math.min(visites * 5, 100); // fallback visuel si pas de portefeuille
+
+    html += `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;font-weight:700;color:var(--navy);min-width:30px">Dép. ${dept}</span>
+          <span style="font-size:11px;color:var(--gray-text)">${visites} client${visites>1?'s':''} visité${visites>1?'s':''}</span>
+          ${hasPf ? `<span style="font-size:11px;color:var(--gray-text)">/ ${portefeuil} en portefeuille</span>` : `<span style="font-size:10px;color:var(--gray-text);font-style:italic">portefeuille non configuré</span>`}
+        </div>
+        <span style="font-size:13px;font-weight:800;color:${color}">${taux !== null ? taux+'%' : visites+' vis.'}</span>
+      </div>
+      <div style="background:var(--gray-bg);border-radius:6px;height:12px;overflow:hidden;position:relative">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:6px;transition:width 0.5s"></div>
+        ${hasPf && taux !== null ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${taux>50?'white':'var(--navy)'}"></div>` : ''}
+      </div>
+    </div>`;
+  });
+
+  // Résumé global si portefeuille configuré
+  const totalPf = Object.values(portfolio).reduce((s,n)=>s+parseInt(n||0),0);
+  const totalVisited = [...new Set(crs.map(cr=>{
+    const d = getDeptForClient(cr.client, contacts); return d ? cr.client : null;
+  }).filter(Boolean))].length;
+
+  if(totalPf > 0) {
+    const tauxGlobal = Math.min(Math.round(totalVisited/totalPf*100),100);
+    const cGlobal = tauxGlobal>=70?'var(--success)':tauxGlobal>=40?'var(--warning)':'var(--danger)';
+    html = `<div style="background:var(--navy);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:10px;color:#9DB4CC;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Couverture globale</div>
+        <div style="font-size:12px;color:white;margin-top:2px">${totalVisited} clients visités / ${totalPf} en portefeuille</div>
+      </div>
+      <div style="font-size:28px;font-weight:800;color:${cGlobal}">${tauxGlobal}%</div>
+    </div>` + html;
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── MODALE PORTEFEUILLE ─────────────────────────────────────────────────────
+function openDeptPortefeuille() {
+  const contacts  = loadData('crm_contacts');
+  const allCrs    = loadData('crm_crs');
+  const portfolio = loadData('crm_dept_portfolio') || {};
+
+  // Collecter tous les départements connus (depuis CRs + contacts)
+  const knownDepts = new Set();
+  allCrs.forEach(cr => { const d=getDeptForClient(cr.client,contacts); if(d) knownDepts.add(d); });
+  Object.keys(portfolio).forEach(d => knownDepts.add(d));
+
+  // Ajouter les depts de la région Occitanie + Nouvelle-Aquitaine par défaut si vide
+  const defaultDepts = ['09','11','12','30','31','32','33','34','40','46','47','48','64','65','66','81','82'];
+  defaultDepts.forEach(d => knownDepts.add(d));
+
+  const sorted = [...knownDepts].sort();
+  const DEPT_NAMES = {
+    '09':'Ariège','11':'Aude','12':'Aveyron','30':'Gard','31':'Haute-Garonne',
+    '32':'Gers','33':'Gironde','34':'Hérault','40':'Landes','46':'Lot',
+    '47':'Lot-et-Garonne','48':'Lozère','64':'Pyrénées-Atlantiques','65':'Hautes-Pyrénées',
+    '66':'Pyrénées-Orientales','81':'Tarn','82':'Tarn-et-Garonne',
+    '13':'Bouches-du-Rhône','69':'Rhône','75':'Paris','67':'Bas-Rhin','59':'Nord',
+  };
+
+  let html = '';
+  sorted.forEach(dept => {
+    const name = DEPT_NAMES[dept] || '';
+    const val  = portfolio[dept] || '';
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-border)">
+      <div style="width:38px;height:38px;border-radius:var(--radius-sm);background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">${dept}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--navy)">${name||'Département '+dept}</div>
+        <div style="font-size:11px;color:var(--gray-text)">Nb total clients en portefeuille</div>
+      </div>
+      <input type="number" id="pf-${dept}" value="${val}" min="0" placeholder="0"
+        style="width:70px;padding:8px 10px;font-size:14px;font-weight:700;text-align:center;border-radius:var(--radius-sm);border:1.5px solid var(--gray-border)">
+    </div>`;
+  });
+
+  // Ajout d'un département personnalisé
+  html += `<div style="padding-top:12px">
+    <div style="font-size:11px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">Ajouter un département</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="pf-new-dept" placeholder="Ex: 13" maxlength="3" style="width:70px;padding:8px 10px;font-size:14px;font-weight:700;text-align:center">
+      <input type="number" id="pf-new-val" placeholder="Nb clients" min="0" style="flex:1;padding:8px 10px;font-size:13px">
+      <button class="btn btn-ghost btn-sm" onclick="addDeptRow()">Ajouter</button>
+    </div>
+  </div>`;
+
+  document.getElementById('deptPortefeuilleForm').innerHTML = html;
+  document.getElementById('modal-dept').style.display = 'flex';
+}
+
+function addDeptRow() {
+  const dept = document.getElementById('pf-new-dept').value.trim().toUpperCase();
+  const val  = document.getElementById('pf-new-val').value.trim();
+  if(!dept) { alert('Saisissez un numéro de département.'); return; }
+  const portfolio = loadData('crm_dept_portfolio') || {};
+  portfolio[dept] = parseInt(val)||0;
+  saveData('crm_dept_portfolio', portfolio);
+  openDeptPortefeuille(); // re-render
+}
+
+function saveDeptPortefeuille() {
+  const portfolio = loadData('crm_dept_portfolio') || {};
+  document.querySelectorAll('[id^="pf-"]').forEach(input => {
+    const dept = input.id.replace('pf-','');
+    if(dept==='new-dept'||dept==='new-val') return;
+    const val = parseInt(input.value)||0;
+    if(val > 0) portfolio[dept] = val;
+    else delete portfolio[dept];
+  });
+  saveData('crm_dept_portfolio', portfolio);
+  closeModal('modal-dept');
+  renderStats();
 }
 
 // ============ PROFILE ============
@@ -3033,28 +3240,31 @@ function closeModalEvent(e) {
 
 // ============ DEMO DATA ============
 function seedDemoData() {
-  if(localStorage.getItem('crm_demo_seeded')) {
-    // Re-seed contacts si pas encore fait séparément
+  if(localStorage.getItem('crm_demo_seeded_v3')) {
     if(!localStorage.getItem('crm_contacts_seeded')) {
       seedContacts();
       localStorage.setItem('crm_contacts_seeded','1');
     }
     return;
   }
+  // Purge ancien seed pour forcer le rechargement avec les nouveaux noms de clients
+  localStorage.removeItem('crm_demo_seeded');
+  localStorage.removeItem('crm_demo_seeded_v2');
+  localStorage.removeItem('crm_contacts_seeded');
 
   const CLIENTS = [
-    { name:'Leroy Merlin Pau',        enseigne:'Leroy Merlin'  },
-    { name:'Leroy Merlin Bayonne',    enseigne:'Leroy Merlin'  },
-    { name:'Leroy Merlin Bordeaux',   enseigne:'Leroy Merlin'  },
-    { name:'Castorama Pau',           enseigne:'Castorama'     },
-    { name:'Castorama Tarbes',        enseigne:'Castorama'     },
-    { name:'Castorama Agen',          enseigne:'Castorama'     },
-    { name:'Jardiland Pau',           enseigne:'Jardiland'     },
-    { name:'Jardiland Bayonne',       enseigne:'Jardiland'     },
-    { name:'Jardiland Mont-de-Marsan',enseigne:'Jardiland'     },
-    { name:'Truffaut Bordeaux',       enseigne:'Truffaut'      },
-    { name:'Truffaut Biarritz',       enseigne:'Truffaut'      },
-    { name:'Truffaut Dax',            enseigne:'Truffaut'      },
+    { name:'Leroy Merlin 64 Pau',           enseigne:'Leroy Merlin'  },
+    { name:'Leroy Merlin 64 Bayonne',        enseigne:'Leroy Merlin'  },
+    { name:'Leroy Merlin 33 Bordeaux',       enseigne:'Leroy Merlin'  },
+    { name:'Castorama 64 Pau',               enseigne:'Castorama'     },
+    { name:'Castorama 65 Tarbes',            enseigne:'Castorama'     },
+    { name:'Castorama 47 Agen',              enseigne:'Castorama'     },
+    { name:'Jardiland 64 Pau',               enseigne:'Jardiland'     },
+    { name:'Jardiland 64 Bayonne',           enseigne:'Jardiland'     },
+    { name:'Jardiland 40 Mont-de-Marsan',    enseigne:'Jardiland'     },
+    { name:'Truffaut 33 Bordeaux',           enseigne:'Truffaut'      },
+    { name:'Truffaut 64 Biarritz',           enseigne:'Truffaut'      },
+    { name:'Truffaut 40 Dax',               enseigne:'Truffaut'      },
   ];
 
   const USERS_CHAMORIN   = ['AITA','JACQUET','CAMERON','SOUBIELLE','IZARD'];
@@ -3192,46 +3402,43 @@ function seedDemoData() {
 
   // ---- Contacts demo ----
   const CONTACTS_DEMO = [
-    // Leroy Merlin Pau
-    { client:'Leroy Merlin Pau',        prenom:'Sébastien', nom:'MARIN',     fonction:'Responsable Rayon Jardin',       email:'s.marin@leroymerlin.fr',       tel:'06 12 34 56 78' },
-    { client:'Leroy Merlin Pau',        prenom:'Nathalie',  nom:'BOYER',     fonction:'Directrice Magasin',             email:'n.boyer@leroymerlin.fr',        tel:'06 87 65 43 21' },
-    // Leroy Merlin Bayonne
-    { client:'Leroy Merlin Bayonne',    prenom:'Thomas',    nom:'DUPUIS',    fonction:'Chef de Secteur Extérieur',      email:'t.dupuis@leroymerlin.fr',       tel:'06 23 45 67 89' },
-    { client:'Leroy Merlin Bayonne',    prenom:'Isabelle',  nom:'LACOMBE',   fonction:'Responsable Achats',             email:'i.lacombe@leroymerlin.fr',      tel:'06 34 56 78 90' },
-    // Leroy Merlin Bordeaux
-    { client:'Leroy Merlin Bordeaux',   prenom:'Frédéric',  nom:'BERNARD',   fonction:'Responsable Rayon Jardinage',    email:'f.bernard@leroymerlin.fr',      tel:'06 45 67 89 01' },
-    // Castorama Pau
-    { client:'Castorama Pau',           prenom:'Laurent',   nom:'PELLETIER', fonction:'Chef de Rayon Aménagement Ext.', email:'l.pelletier@castorama.fr',      tel:'06 56 78 90 12' },
-    { client:'Castorama Pau',           prenom:'Sophie',    nom:'RENAUD',    fonction:'Directrice Adjointe',            email:'s.renaud@castorama.fr',         tel:'06 67 89 01 23' },
-    // Castorama Tarbes
-    { client:'Castorama Tarbes',        prenom:'Bruno',     nom:'GARCIA',    fonction:'Responsable Rayon Jardin',       email:'b.garcia@castorama.fr',         tel:'06 78 90 12 34' },
-    // Castorama Agen
-    { client:'Castorama Agen',          prenom:'Élodie',    nom:'MOREL',     fonction:'Chef de Secteur',                email:'e.morel@castorama.fr',          tel:'06 89 01 23 45' },
-    { client:'Castorama Agen',          prenom:'Marc',      nom:'GUILLOT',   fonction:'Directeur Magasin',              email:'m.guillot@castorama.fr',        tel:'06 90 12 34 56' },
-    // Jardiland Pau
-    { client:'Jardiland Pau',           prenom:'Caroline',  nom:'SIMON',     fonction:'Responsable Végétaux',           email:'c.simon@jardiland.fr',          tel:'06 11 22 33 44' },
-    { client:'Jardiland Pau',           prenom:'Arnaud',    nom:'FAURE',     fonction:'Directeur Magasin',              email:'a.faure@jardiland.fr',          tel:'06 22 33 44 55' },
-    // Jardiland Bayonne
-    { client:'Jardiland Bayonne',       prenom:'Céline',    nom:'LEPAGE',    fonction:'Chef Rayon Horticulture',        email:'c.lepage@jardiland.fr',         tel:'06 33 44 55 66' },
-    // Jardiland Mont-de-Marsan
-    { client:'Jardiland Mont-de-Marsan',prenom:'David',     nom:'CHEVALIER', fonction:'Responsable Rayon',              email:'d.chevalier@jardiland.fr',      tel:'06 44 55 66 77' },
-    { client:'Jardiland Mont-de-Marsan',prenom:'Aurélie',   nom:'PETIT',     fonction:'Directrice',                     email:'a.petit@jardiland.fr',          tel:'06 55 66 77 88' },
-    // Truffaut Bordeaux
-    { client:'Truffaut Bordeaux',       prenom:'Nicolas',   nom:'LAMBERT',   fonction:'Responsable Végétaux & Terreau', email:'n.lambert@truffaut.com',        tel:'06 66 77 88 99' },
-    { client:'Truffaut Bordeaux',       prenom:'Marie-Laure',nom:'BLANC',    fonction:'Directrice Magasin',             email:'ml.blanc@truffaut.com',         tel:'06 77 88 99 00' },
-    // Truffaut Biarritz
-    { client:'Truffaut Biarritz',       prenom:'Julien',    nom:'MOULIN',    fonction:'Chef de Rayon Jardin',           email:'j.moulin@truffaut.com',         tel:'06 88 99 00 11' },
-    // Truffaut Dax
-    { client:'Truffaut Dax',            prenom:'Sandrine',  nom:'LEROY',     fonction:'Responsable Achats Région',      email:'s.leroy@truffaut.com',          tel:'06 99 00 11 22' },
-    { client:'Truffaut Dax',            prenom:'Pierre',    nom:'FONTAINE',  fonction:'Directeur Magasin',              email:'p.fontaine@truffaut.com',        tel:'06 10 11 22 33' },
+    { client:'Leroy Merlin 64 Pau',        prenom:'Sébastien',  nom:'MARIN',     fonction:'Responsable Rayon Jardin',       email:'s.marin@leroymerlin.fr',       tel:'06 12 34 56 78' },
+    { client:'Leroy Merlin 64 Pau',        prenom:'Nathalie',   nom:'BOYER',     fonction:'Directrice Magasin',             email:'n.boyer@leroymerlin.fr',        tel:'06 87 65 43 21' },
+    { client:'Leroy Merlin 64 Bayonne',    prenom:'Thomas',     nom:'DUPUIS',    fonction:'Chef de Secteur Extérieur',      email:'t.dupuis@leroymerlin.fr',       tel:'06 23 45 67 89' },
+    { client:'Leroy Merlin 64 Bayonne',    prenom:'Isabelle',   nom:'LACOMBE',   fonction:'Responsable Achats',             email:'i.lacombe@leroymerlin.fr',      tel:'06 34 56 78 90' },
+    { client:'Leroy Merlin 33 Bordeaux',   prenom:'Frédéric',   nom:'BERNARD',   fonction:'Responsable Rayon Jardinage',    email:'f.bernard@leroymerlin.fr',      tel:'06 45 67 89 01' },
+    { client:'Castorama 64 Pau',           prenom:'Laurent',    nom:'PELLETIER', fonction:'Chef de Rayon Aménagement Ext.', email:'l.pelletier@castorama.fr',      tel:'06 56 78 90 12' },
+    { client:'Castorama 64 Pau',           prenom:'Sophie',     nom:'RENAUD',    fonction:'Directrice Adjointe',            email:'s.renaud@castorama.fr',         tel:'06 67 89 01 23' },
+    { client:'Castorama 65 Tarbes',        prenom:'Bruno',      nom:'GARCIA',    fonction:'Responsable Rayon Jardin',       email:'b.garcia@castorama.fr',         tel:'06 78 90 12 34' },
+    { client:'Castorama 47 Agen',          prenom:'Élodie',     nom:'MOREL',     fonction:'Chef de Secteur',                email:'e.morel@castorama.fr',          tel:'06 89 01 23 45' },
+    { client:'Castorama 47 Agen',          prenom:'Marc',       nom:'GUILLOT',   fonction:'Directeur Magasin',              email:'m.guillot@castorama.fr',        tel:'06 90 12 34 56' },
+    { client:'Jardiland 64 Pau',           prenom:'Caroline',   nom:'SIMON',     fonction:'Responsable Végétaux',           email:'c.simon@jardiland.fr',          tel:'06 11 22 33 44' },
+    { client:'Jardiland 64 Pau',           prenom:'Arnaud',     nom:'FAURE',     fonction:'Directeur Magasin',              email:'a.faure@jardiland.fr',          tel:'06 22 33 44 55' },
+    { client:'Jardiland 64 Bayonne',       prenom:'Céline',     nom:'LEPAGE',    fonction:'Chef Rayon Horticulture',        email:'c.lepage@jardiland.fr',         tel:'06 33 44 55 66' },
+    { client:'Jardiland 40 Mont-de-Marsan',prenom:'David',      nom:'CHEVALIER', fonction:'Responsable Rayon',              email:'d.chevalier@jardiland.fr',      tel:'06 44 55 66 77' },
+    { client:'Jardiland 40 Mont-de-Marsan',prenom:'Aurélie',    nom:'PETIT',     fonction:'Directrice',                     email:'a.petit@jardiland.fr',          tel:'06 55 66 77 88' },
+    { client:'Truffaut 33 Bordeaux',       prenom:'Nicolas',    nom:'LAMBERT',   fonction:'Responsable Végétaux & Terreau', email:'n.lambert@truffaut.com',        tel:'06 66 77 88 99' },
+    { client:'Truffaut 33 Bordeaux',       prenom:'Marie-Laure',nom:'BLANC',     fonction:'Directrice Magasin',             email:'ml.blanc@truffaut.com',         tel:'06 77 88 99 00' },
+    { client:'Truffaut 64 Biarritz',       prenom:'Julien',     nom:'MOULIN',    fonction:'Chef de Rayon Jardin',           email:'j.moulin@truffaut.com',         tel:'06 88 99 00 11' },
+    { client:'Truffaut 40 Dax',            prenom:'Sandrine',   nom:'LEROY',     fonction:'Responsable Achats Région',      email:'s.leroy@truffaut.com',          tel:'06 99 00 11 22' },
+    { client:'Truffaut 40 Dax',            prenom:'Pierre',     nom:'FONTAINE',  fonction:'Directeur Magasin',              email:'p.fontaine@truffaut.com',       tel:'06 10 11 22 33' },
   ];
 
   const contacts = CONTACTS_DEMO.map((c,i) => ({ ...c, id: String(20000+i), createdAt: new Date().toISOString() }));
   saveData('crm_contacts', contacts);
 
+  // Portefeuille département par défaut
+  if(Object.keys(loadData('crm_dept_portfolio')||{}).length === 0) {
+    saveData('crm_dept_portfolio', {
+      '64': 45, '65': 18, '66': 22, '33': 30,
+      '40': 20, '47': 12, '32': 8,  '31': 15
+    });
+  }
+
   saveData('crm_crs', crs);
   saveData('crm_events', events);
   localStorage.setItem('crm_demo_seeded', '1');
+  localStorage.setItem('crm_demo_seeded_v3', '1');
   localStorage.setItem('crm_contacts_seeded', '1');
 }
 
